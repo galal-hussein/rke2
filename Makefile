@@ -157,5 +157,15 @@ download-charts:
 	@./.dapper.tmp -v
 	@mv .dapper.tmp .dapper
 
+k8s-image: k8s-image-build k8s-image-scan
+
+k8s-image-build:
+	docker build \
+    	--build-arg TAG=$(TAG) -f Dockerfile.k8s -t ranchertest/kubernetes:$(shell echo $(TAG) | sed -e 's/+/-/g') .
+
+SEVERITIES = HIGH,CRITICAL
+k8s-image-scan:
+	trivy --severity $(SEVERITIES) --no-progress --skip-update --ignore-unfixed ranchertest/kubernetes:$(shell echo $(TAG) | sed -e 's/+/-/g')
+
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
