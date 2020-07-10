@@ -31,10 +31,10 @@ steps:
     instance:
       - drone-publish.rancher.io
     ref:
-      - refs/head/master
-      - refs/tags/*
+    - refs/head/master
+    - refs/tags/*
     event:
-      - tag
+    - tag
 
 - name: docker-scan-k8s
   image: briandowns/rancher-build-base:v0.1.1
@@ -46,11 +46,11 @@ steps:
   when:
     instance:
       - drone-publish.rancher.io
-      ref:
-        - refs/head/master
-        - refs/tags/*
+    ref:
+    - refs/head/master
+    - refs/tags/*
     event:
-      - tag
+    - tag
 
 - name: github_binary_release
   image: plugins/github-release
