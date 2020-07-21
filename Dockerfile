@@ -1,4 +1,5 @@
 ARG KUBERNETES_VERSION=dev
+ARG KUBERNETES_VERSION=dev
 # Build environment
 FROM ranchertest/build-base:v1.14.2 AS build
 # Yep nothing special here yet
@@ -17,7 +18,7 @@ VOLUME /var/lib/rancher/k3s
 
 # Dapper/Drone/CI environment
 FROM build AS dapper
-ENV DAPPER_ENV REPO TAG DRONE_TAG
+ENV DAPPER_ENV REPO TAG DRONE_TAG PAT_USERNAME PAT_TOKEN
 ENV DAPPER_OUTPUT ./dist ./bin ./build
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_TARGET dapper
