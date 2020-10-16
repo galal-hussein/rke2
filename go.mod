@@ -53,6 +53,7 @@ replace (
 	k8s.io/sample-cli-plugin => github.com/rancher/kubernetes/staging/src/k8s.io/sample-cli-plugin v1.19.0-k3s1
 	k8s.io/sample-controller => github.com/rancher/kubernetes/staging/src/k8s.io/sample-controller v1.19.0-k3s1
 	mvdan.cc/unparam => mvdan.cc/unparam v0.0.0-20190209190245-fbb59629db34
+	github.com/rancher/k3s => github.com/galal-hussein/k3s v0.1.1-0.20201015233010-8d2f6a14531d
 )
 
 require (

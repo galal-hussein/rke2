@@ -265,6 +265,8 @@ github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMo
 github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWoS4=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa/go.mod h1:KnogPXtdwXqoenmZCw6S+25EAm2MkxbG0deNDu4cbSA=
+github.com/galal-hussein/k3s v0.1.1-0.20201015233010-8d2f6a14531d h1:WzOi3cKWxtTgeyO8/r8GTnhhB7seQihX28eoCDCxyw4=
+github.com/galal-hussein/k3s v0.1.1-0.20201015233010-8d2f6a14531d/go.mod h1:GpF+Z/nMLOK28C2a2eN5Tw6io2li28fKlUMMTahUmlc=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
@@ -699,6 +701,8 @@ github.com/rancher/k3s v1.19.2-0.20200930184558-c3c983198f4c h1:w4UIfvsIYjJ7zgME
 github.com/rancher/k3s v1.19.2-0.20200930184558-c3c983198f4c/go.mod h1:FvWbZ2LUOiwryP+cLBto3hByVr9nYOyYKZbUYdaojsM=
 github.com/rancher/kine v0.4.0 h1:1IhWy3TzjExG8xnj46eyUEWdzqNAD1WrgL4eEBKm6Uc=
 github.com/rancher/kine v0.4.0/go.mod h1:IImtCJ68AIkE+VY/kUI0NkyJL5q5WzO8QvMsSXqbrpA=
+github.com/rancher/kine v0.4.1 h1:CPtGDXsov5t5onXwhZ97VBpaxDoj1MBHeQwB0TSrUu8=
+github.com/rancher/kine v0.4.1/go.mod h1:IImtCJ68AIkE+VY/kUI0NkyJL5q5WzO8QvMsSXqbrpA=
 github.com/rancher/kubernetes v1.19.0-k3s1 h1:TPFj4qlQgZ2E9xE/ScFLtBQoymxPNCXAYHJpSZYRW3o=
 github.com/rancher/kubernetes v1.19.0-k3s1/go.mod h1:yhT1/ltQajQsha3tnYc9QPFYSumGM45nlZdjf7WqE1A=
 github.com/rancher/kubernetes/staging/src/k8s.io/api v1.19.0-k3s1 h1:204QC6VE7boSt570FipkF1fGXQeAr3s66QdRM+GJM30=
