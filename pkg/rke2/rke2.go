@@ -4,10 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rancher/rke2/pkg/controllers/cisnetworkpolicy"
+	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/k3s/pkg/agent/config"
 	"github.com/rancher/k3s/pkg/cli/agent"
@@ -39,6 +42,7 @@ const (
 	CISProfile15           = "cis-1.5"
 	CISProfile16           = "cis-1.6"
 	defaultAuditPolicyFile = "/etc/rancher/rke2/audit-policy.yaml"
+	defaultPodManifestPath = "pod-manifests"
 )
 
 func Server(clx *cli.Context, cfg Config) error {
@@ -92,6 +96,9 @@ func setup(clx *cli.Context, cfg Config) error {
 	dataDir := clx.String("data-dir")
 	privateRegistry := clx.String("private-registry")
 	disableETCD := clx.Bool("disable-etcd")
+	disableScheduler := clx.Bool("disable-scheduler")
+	disableAPIServer := clx.Bool("disable-api-server")
+	disableControllerManager := clx.Bool("disable-controller-manager")
 
 	auditPolicyFile := clx.String("audit-policy-file")
 	if auditPolicyFile == "" {
@@ -165,6 +172,74 @@ func setup(clx *cli.Context, cfg Config) error {
 		DisableETCD:     disableETCD,
 	}
 	executor.Set(&sp)
+
+	disabledItems := map[string]bool{
+		"kube-apiserver":          disableAPIServer,
+		"kube-scheduler":          disableScheduler,
+		"kube-controller-manager": disableControllerManager,
+		"etcd":                    disableETCD,
+	}
+	return removeOldPodManifests(dataDir, disabledItems)
+}
+
+func podManifestsDir(dataDir string) string {
+	return filepath.Join(dataDir, "agent", defaultPodManifestPath)
+}
+
+func removeOldPodManifests(dataDir string, disabledItems map[string]bool) error {
+	var kubeletStandAlone bool
+	for component, disabled := range disabledItems {
+		if disabled {
+			manifestName := filepath.Join(podManifestsDir(dataDir), component+".yaml")
+			if _, err := os.Stat(manifestName); err == nil {
+				kubeletStandAlone = true
+				if err := os.Remove(manifestName); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	if kubeletStandAlone {
+		// starting containerd first then kubelet
+		tmpAddress := filepath.Join(os.TempDir(), "containerd.sock")
+		args := []string{
+			"-a", tmpAddress,
+			"--root", filepath.Join(dataDir, "agent", "containerd"),
+		}
+		containerdCmd := exec.Command("containerd", args...)
+		containerdCmd.Stdout = os.Stdout
+		containerdCmd.Stderr = os.Stderr
+		containerdErr := make(chan error)
+
+		// starting kubelet in standalone mode to delete old static pods
+		args = []string{
+			"--fail-swap-on=false",
+			"--container-runtime=remote",
+			"--containerd=" + tmpAddress,
+			"--container-runtime-endpoint=unix://" + tmpAddress,
+			"--pod-manifest-path=" + podManifestsDir(dataDir),
+		}
+		kubelet := exec.Command("kubelet", args...)
+		kubelet.Stdout = os.Stdout
+		kubelet.Stderr = os.Stderr
+		kubeletErr := make(chan error)
+		go func() {
+			select {
+			case err := <-kubeletErr:
+				logrus.Infof("kubelet Exited: %v", err)
+			case <-time.After(30 * time.Second):
+				kubelet.Process.Kill()
+				containerdCmd.Process.Kill()
+			}
+
+		}()
+		go func() {
+			containerdErr <- containerdCmd.Run()
+		}()
+		go func() {
+			kubeletErr <- kubelet.Run()
+		}()
+	}
 
 	return nil
 }
