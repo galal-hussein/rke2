@@ -1,6 +1,7 @@
 package rke2
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/containerd"
 	"github.com/rancher/rke2/pkg/controllers/cisnetworkpolicy"
 	"github.com/sirupsen/logrus"
 
@@ -223,12 +225,34 @@ func removeOldPodManifests(dataDir string, disabledItems map[string]bool) error 
 		kubelet.Stdout = os.Stdout
 		kubelet.Stderr = os.Stderr
 		kubeletErr := make(chan error)
+
+		go func() {
+			for {
+				client, err := containerd.New(tmpAddress)
+				defer client.Close()
+				if err != nil {
+					logrus.Warnf("Failed to setup containerd client: %v", err)
+					continue
+				}
+				containers, err := client.Containers(context.Background())
+				if err != nil {
+					logrus.Warnf("Failed to setup containerd client: %v", err)
+					continue
+				}
+
+			}
+
+		}()
+
 		go func() {
 			select {
 			case err := <-kubeletErr:
 				logrus.Infof("kubelet Exited: %v", err)
+				// exits containerd if kubelet exits
+				containerdCmd.Process.Kill()
 			case err := <-containerdErr:
 				logrus.Infof("Containerd Exited: %v", err)
+				kubelet.Process.Kill()
 			case <-time.After(2 * time.Minute):
 				kubelet.Process.Kill()
 				containerdCmd.Process.Kill()
