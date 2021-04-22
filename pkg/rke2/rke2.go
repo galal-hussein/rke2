@@ -227,7 +227,9 @@ func removeOldPodManifests(dataDir string, disabledItems map[string]bool) error 
 			select {
 			case err := <-kubeletErr:
 				logrus.Infof("kubelet Exited: %v", err)
-			case <-time.After(30 * time.Second):
+			case err := <-containerdErr:
+				logrus.Infof("Containerd Exited: %v", err)
+			case <-time.After(2 * time.Minute):
 				kubelet.Process.Kill()
 				containerdCmd.Process.Kill()
 			}
