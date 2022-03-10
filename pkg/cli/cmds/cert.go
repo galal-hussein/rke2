@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/cli/cert"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
@@ -10,37 +11,60 @@ import (
 	"github.com/urfave/cli"
 )
 
-var k3sCertFlags = map[string]*K3SFlagOption{
-	"config":          copy,
-	"debug":           copy,
-	"log":             copy,
-	"alsologtostderr": copy,
-	"service":         copy,
-	"data-dir": {
-		Usage:   "(data) Folder to hold state",
-		Default: rke2Path,
-	},
-}
-
-var certSubcommands = []cli.Command{
-	{
-		Name:            "rotate",
-		Usage:           "Certificate Rotatation",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          CertificateRotationRun,
-		Flags:           cmds.CertCommandFlags,
-	},
-}
+const CertCommand = "certificate"
 
 var (
-	k3sCertBase = mustCmdFromK3S(cmds.NewCertCommand(certSubcommands), k3sCertFlags)
+	CertCommandFlags = []cli.Flag{
+		DebugFlag,
+		ConfigFlag,
+		LogFile,
+		AlsoLogToStderr,
+		cli.StringFlag{
+			Name:        "data-dir,d",
+			Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
+			Destination: &cmds.ServerConfig.DataDir,
+			Value:       rke2Path,
+		},
+		cli.StringSliceFlag{
+			Name:  "service,s",
+			Usage: "List of services to rotate certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
+			Value: &cmds.ServicesList,
+		},
+	}
+	certSubcommands = []cli.Command{
+		{
+			Name:            "rotate",
+			Usage:           "Certificate Rotatation",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          CertificateRotationRun,
+			Flags:           CertCommandFlags,
+		},
+	}
 )
 
-func NewCertRotateCommand() cli.Command {
-	cmd := k3sCertBase
-	configfilearg.DefaultParser.ValidFlags[cmd.Name] = cmd.Flags
-	return cmd
+func NewCertCommand(subcommands []cli.Command) cli.Command {
+	return cli.Command{
+		Name:            CertCommand,
+		Usage:           "Certificates management",
+		SkipFlagParsing: false,
+		SkipArgReorder:  true,
+		Subcommands:     subcommands,
+		Flags:           CertCommandFlags,
+	}
+}
+
+func NewCertSubcommands(rotate func(ctx *cli.Context) error) []cli.Command {
+	return []cli.Command{
+		{
+			Name:            "rotate",
+			Usage:           "Certificate rotation",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          rotate,
+			Flags:           CertCommandFlags,
+		},
+	}
 }
 
 func CertificateRotationRun(clx *cli.Context) error {
@@ -48,8 +72,12 @@ func CertificateRotationRun(clx *cli.Context) error {
 	if dataDir == "" {
 		dataDir = rke2Path
 	}
-	if err := ioutil.WriteFile(rke2.ForceRestartFile(dataDir), []byte{}, 0600); err != nil {
+	if err := ioutil.WriteFile(ForceRestartFile(dataDir), []byte{}, 0600); err != nil {
 		return err
 	}
 	return cert.Run(clx)
+}
+
+func ForceRestartFile(dataDir string) string {
+	return filepath.Join(dataDir, "force-restart")
 }

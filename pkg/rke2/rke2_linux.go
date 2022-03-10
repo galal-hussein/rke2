@@ -33,11 +33,8 @@ const (
 	MemoryLimit   = "memory-limit"
 )
 
-func initExecutor(clx *cli.Context, cfg Config, dataDir string, disableETCD bool, isServer bool) (*podexecutor.StaticPodConfig, error) {
-	// This flag will only be set on servers, on agents this is a no-op and the
-	// resolver's default registry will get updated later when bootstrapping
-	cfg.Images.SystemDefaultRegistry = clx.String("system-default-registry")
-	resolver, err := images.NewResolver(cfg.Images)
+func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor.StaticPodConfig, error) {
+	resolver, err := images.NewResolver(cmds.RootConfig.Images)
 	if err != nil {
 		return nil, err
 	}
@@ -58,15 +55,15 @@ func initExecutor(clx *cli.Context, cfg Config, dataDir string, disableETCD bool
 		cmds.ServerConfig.DisableCCM = true
 	}
 	var cpConfig *podexecutor.CloudProviderConfig
-	if cfg.CloudProviderConfig != "" && cfg.CloudProviderName == "" {
+	if cmds.RootConfig.CloudProviderConfig != "" && cmds.RootConfig.CloudProviderName == "" {
 		return nil, fmt.Errorf("--cloud-provider-config requires --cloud-provider-name to be provided")
 	}
-	if cfg.CloudProviderName != "" {
+	if cmds.RootConfig.CloudProviderName != "" {
 		cpConfig = &podexecutor.CloudProviderConfig{
-			Name: cfg.CloudProviderName,
-			Path: cfg.CloudProviderConfig,
+			Name: cmds.RootConfig.CloudProviderName,
+			Path: cmds.RootConfig.CloudProviderConfig,
 		}
-		if clx.String("node-name") == "" && cfg.CloudProviderName == "aws" {
+		if cmds.AgentConfig.NodeName && cmds.RootConfig.CloudProviderName == "aws" {
 			fqdn := hostnameFromMetadataEndpoint(context.Background())
 			if fqdn == "" {
 				hostFQDN, err := hostnameFQDN()
@@ -75,14 +72,12 @@ func initExecutor(clx *cli.Context, cfg Config, dataDir string, disableETCD bool
 				}
 				fqdn = hostFQDN
 			}
-			if err := clx.Set("node-name", fqdn); err != nil {
-				return nil, err
-			}
+			cmds.AgentConfig.NodeName = fqdn
 		}
 	}
 
-	if cfg.KubeletPath == "" {
-		cfg.KubeletPath = "kubelet"
+	if cmds.AgentConfig.KubeletPath == "" {
+		cmds.AgentConfig.KubeletPath = "kubelet"
 	}
 
 	var controlPlaneResources podexecutor.ControlPlaneResources
@@ -130,8 +125,8 @@ func initExecutor(clx *cli.Context, cfg Config, dataDir string, disableETCD bool
 
 	var parsedRequestsLimits = make(map[string]string)
 
-	if cfg.ControlPlaneResourceRequests != "" {
-		for _, rawRequest := range strings.Split(cfg.ControlPlaneResourceRequests, ",") {
+	if cmds.RootConfig.ControlPlaneResourceRequests != "" {
+		for _, rawRequest := range strings.Split(cmds.RootConfig.ControlPlaneResourceRequests, ",") {
 			v := strings.SplitN(rawRequest, "=", 2)
 			if len(v) != 2 {
 				logrus.Fatalf("incorrectly formatted control plane resource request specified: %s", rawRequest)
@@ -140,8 +135,8 @@ func initExecutor(clx *cli.Context, cfg Config, dataDir string, disableETCD bool
 		}
 	}
 
-	if cfg.ControlPlaneResourceLimits != "" {
-		for _, rawLimit := range strings.Split(cfg.ControlPlaneResourceLimits, ",") {
+	if cmds.RootConfig.ControlPlaneResourceLimits != "" {
+		for _, rawLimit := range strings.Split(cmds.RootConfig.ControlPlaneResourceLimits, ",") {
 			v := strings.SplitN(rawLimit, "=", 2)
 			if len(v) != 2 {
 				logrus.Fatalf("incorrectly formatted control plane resource request specified: %s", rawLimit)
@@ -162,21 +157,21 @@ func initExecutor(clx *cli.Context, cfg Config, dataDir string, disableETCD bool
 	logrus.Debugf("Parsed control plane requests/limits: %+v\n", controlPlaneResources)
 
 	extraEnv := podexecutor.ControlPlaneEnv{
-		KubeAPIServer:          cfg.ExtraEnv.KubeAPIServer.Value(),
-		KubeScheduler:          cfg.ExtraEnv.KubeScheduler.Value(),
-		KubeControllerManager:  cfg.ExtraEnv.KubeControllerManager.Value(),
-		KubeProxy:              cfg.ExtraEnv.KubeProxy.Value(),
-		Etcd:                   cfg.ExtraEnv.Etcd.Value(),
-		CloudControllerManager: cfg.ExtraEnv.CloudControllerManager.Value(),
+		KubeAPIServer:          cmds.RootConfig.ExtraEnv.KubeAPIServer.Value(),
+		KubeScheduler:          cmds.RootConfig.ExtraEnv.KubeScheduler.Value(),
+		KubeControllerManager:  cmds.RootConfig.ExtraEnv.KubeControllerManager.Value(),
+		KubeProxy:              cmds.RootConfig.ExtraEnv.KubeProxy.Value(),
+		Etcd:                   cmds.RootConfig.ExtraEnv.Etcd.Value(),
+		CloudControllerManager: cmds.RootConfig.ExtraEnv.CloudControllerManager.Value(),
 	}
 
 	extraMounts := podexecutor.ControlPlaneMounts{
-		KubeAPIServer:          cfg.ExtraMounts.KubeAPIServer.Value(),
-		KubeScheduler:          cfg.ExtraMounts.KubeScheduler.Value(),
-		KubeControllerManager:  cfg.ExtraMounts.KubeControllerManager.Value(),
-		KubeProxy:              cfg.ExtraMounts.KubeProxy.Value(),
-		Etcd:                   cfg.ExtraMounts.Etcd.Value(),
-		CloudControllerManager: cfg.ExtraMounts.CloudControllerManager.Value(),
+		KubeAPIServer:          cmds.RootConfig.ExtraMounts.KubeAPIServer.Value(),
+		KubeScheduler:          cmds.RootConfig.ExtraMounts.KubeScheduler.Value(),
+		KubeControllerManager:  cmds.RootConfig.ExtraMounts.KubeControllerManager.Value(),
+		KubeProxy:              cmds.RootConfig.ExtraMounts.KubeProxy.Value(),
+		Etcd:                   cmds.RootConfig.ExtraMounts.Etcd.Value(),
+		CloudControllerManager: cmds.RootConfig.ExtraMounts.CloudControllerManager.Value(),
 	}
 
 	return &podexecutor.StaticPodConfig{
@@ -187,8 +182,8 @@ func initExecutor(clx *cli.Context, cfg Config, dataDir string, disableETCD bool
 		CloudProvider:         cpConfig,
 		DataDir:               dataDir,
 		AuditPolicyFile:       clx.String("audit-policy-file"),
-		KubeletPath:           cfg.KubeletPath,
-		DisableETCD:           disableETCD,
+		KubeletPath:           cmds.RootConfig.KubeletPath,
+		DisableETCD:           cmds.ServerConfig.DisableETCD,
 		IsServer:              isServer,
 		ControlPlaneResources: controlPlaneResources,
 		ControlPlaneEnv:       extraEnv,

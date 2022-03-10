@@ -27,6 +27,8 @@ import (
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
+var DefaultPodManifestPath = "pod-manifests"
+
 type Config struct {
 	AuditPolicyFile              string
 	CloudProviderConfig          string
@@ -71,7 +73,7 @@ const (
 	CloudControllerManager = "cloud-controller-manager"
 )
 
-func Server(clx *cli.Context, cfg Config) error {
+func Server(clx *cli.Context) error {
 	if err := setup(clx, cfg, true); err != nil {
 		return err
 	}
@@ -120,21 +122,8 @@ func Agent(clx *cli.Context, cfg Config) error {
 	return agent.Run(clx)
 }
 
-func EtcdSnapshot(clx *cli.Context, cfg Config) error {
-	cmds.ServerConfig.DatastoreEndpoint = "etcd"
-	return etcdsnapshot.Run(clx)
-}
-
-func setup(clx *cli.Context, cfg Config, isServer bool) error {
-	dataDir := clx.String("data-dir")
-	disableETCD := clx.Bool("disable-etcd")
-	disableScheduler := clx.Bool("disable-scheduler")
-	disableAPIServer := clx.Bool("disable-apiserver")
-	disableControllerManager := clx.Bool("disable-controller-manager")
-	disableCloudControllerManager := clx.Bool("disable-cloud-controller")
-	clusterReset := clx.Bool("cluster-reset")
-
-	ex, err := initExecutor(clx, cfg, dataDir, disableETCD, isServer)
+func setup(clx *cli.Context, dataDir string, isServer bool) error {
+	ex, err := initExecutor(clx, dataDir, isServer)
 	if err != nil {
 		return err
 	}
@@ -151,13 +140,13 @@ func setup(clx *cli.Context, cfg Config, isServer bool) error {
 		os.Remove(ForceRestartFile(dataDir))
 	}
 	disabledItems := map[string]bool{
-		"kube-apiserver":           disableAPIServer || forceRestart,
-		"kube-scheduler":           disableScheduler || forceRestart,
-		"kube-controller-manager":  disableControllerManager || forceRestart,
-		"cloud-controller-manager": disableCloudControllerManager || forceRestart,
-		"etcd":                     disableETCD || forceRestart,
+		"kube-apiserver":           cmds.ServerConfig.DisableAPIServer || forceRestart,
+		"kube-scheduler":           cmds.ServerConfig.DisableScheduler || forceRestart,
+		"kube-controller-manager":  cmds.ServerConfig.DisableControllerManager || forceRestart,
+		"cloud-controller-manager": cmds.ServerConfig.DisableCCM || forceRestart,
+		"etcd":                     cmds.ServerConfig.DisableETCD || forceRestart,
 	}
-	return removeOldPodManifests(dataDir, disabledItems, clusterReset)
+	return removeOldPodManifests(dataDir, disabledItems, cmds.ServerConfig.ClusterReset)
 }
 
 func ForceRestartFile(dataDir string) string {
@@ -165,7 +154,7 @@ func ForceRestartFile(dataDir string) string {
 }
 
 func podManifestsDir(dataDir string) string {
-	return filepath.Join(dataDir, "agent", config.DefaultPodManifestPath)
+	return filepath.Join(dataDir, "agent", DefaultPodManifestPath)
 }
 
 func binDir(dataDir string) string {

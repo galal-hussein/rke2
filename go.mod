@@ -64,6 +64,7 @@ require (
 	github.com/containerd/continuity v0.2.2
 	github.com/google/go-containerregistry v0.7.0
 	github.com/google/gopacket v1.1.19
+	github.com/gorilla/mux v1.8.0
 	github.com/iamacarpet/go-win64api v0.0.0-20210311141720-fe38760bed28
 	github.com/k3s-io/helm-controller v0.11.7
 	github.com/k3s-io/k3s v1.23.5-0.20220309000057-8083ef5824f2 // master
@@ -73,6 +74,7 @@ require (
 	github.com/rancher/wharfie v0.5.2
 	github.com/rancher/wins v0.1.1
 	github.com/rancher/wrangler v0.8.10
+	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli v1.22.5
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
