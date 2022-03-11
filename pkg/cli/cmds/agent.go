@@ -3,8 +3,8 @@ package cmds
 import (
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/configfilearg"
-	"github.com/rancher/rke2/pkg/rke2"
-	"github.com/rancher/rke2/pkg/windows"
+	"github.com/k3s-io/k3s/pkg/version"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/urfave/cli"
 )
 

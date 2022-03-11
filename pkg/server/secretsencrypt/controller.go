@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rancher/k3s/pkg/cluster"
-	"github.com/rancher/k3s/pkg/daemons/config"
-	"github.com/rancher/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/cluster"
+	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/rancher/rke2/pkg/config"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -120,7 +120,7 @@ func (h *handler) onChangeNode(key string, node *corev1.Node) (*corev1.Node, err
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}
-	if err := cluster.Save(h.ctx, h.controlConfig, h.controlConfig.Runtime.EtcdConfig, true); err != nil {
+	if err := cluster.Save(h.ctx, h.controlConfig, true); err != nil {
 		h.recorder.Event(node, corev1.EventTypeWarning, secretsUpdateErrorEvent, err.Error())
 		return node, err
 	}

@@ -11,17 +11,18 @@ import (
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
+	"github.com/k3s-io/k3s/pkg/agent"
+	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/clientaccess"
+	"github.com/k3s-io/k3s/pkg/datadir"
+	"github.com/k3s-io/k3s/pkg/etcd"
+	"github.com/k3s-io/k3s/pkg/netutil"
+	"github.com/k3s-io/k3s/pkg/server"
+	"github.com/k3s-io/k3s/pkg/token"
+	"github.com/k3s-io/k3s/pkg/util"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/rancher/k3s/pkg/agent"
-	"github.com/rancher/k3s/pkg/agent/loadbalancer"
-	"github.com/rancher/k3s/pkg/cli/cmds"
-	"github.com/rancher/k3s/pkg/clientaccess"
-	"github.com/rancher/k3s/pkg/datadir"
-	"github.com/rancher/k3s/pkg/etcd"
-	"github.com/rancher/k3s/pkg/server"
-	"github.com/rancher/k3s/pkg/token"
-	"github.com/rancher/k3s/pkg/util"
-	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
@@ -87,44 +88,53 @@ func (s *Server) Run(app *cli.Context) error {
 		s.ServerConfig.APIServerPort = cmds.AgentConfig.LBServerPort - 1
 	}
 
-	if len(cmds.AgentConfig.NodeIP) != 0 {
+	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
+		cmds.AgentConfig.NodeIP.Set(netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
+	}
+
+	if s.ServerConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
 		// ignoring the error here is fine since etcd will fall back to the interface's IPv4 address
-		s.ServerConfig.PrivateIP, _ = util.GetFirst4String(s.AgentConfig.NodeIP)
+		s.ServerConfig.PrivateIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
 	}
 
 	// if not set, try setting advertise-ip from agent node-external-ip
-	if s.ServerConfig.AdvertiseIP == "" && len(s.AgentConfig.NodeExternalIP) != 0 {
-		s.ServerConfig.AdvertiseIP, _ = util.GetFirst4String(s.AgentConfig.NodeExternalIP)
+	if s.ServerConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
+		s.ServerConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeExternalIP)
 	}
 
 	// if not set, try setting advertise-ip from agent node-ip
-	if s.ServerConfig.AdvertiseIP == "" && len(s.AgentConfig.NodeIP) != 0 {
-		s.ServerConfig.AdvertiseIP, _ = util.GetFirst4String(s.AgentConfig.NodeIP)
+	if s.ServerConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
+		s.ServerConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
 	}
 
 	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
 	// note that kube-apiserver does not support dual-stack advertise-ip as of 1.21.0:
 	/// https://github.com/kubernetes/kubeadm/issues/1612#issuecomment-772583989
 	if s.ServerConfig.AdvertiseIP != "" {
-		s.ServerConfig.TLSSan = append(s.ServerConfig.TLSSan, s.ServerConfig.AdvertiseIP)
+		s.ServerConfig.SANs = append(s.ServerConfig.SANs, s.ServerConfig.AdvertiseIP)
 	}
 
 	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the
 	// certs for the supervisor, kube-apiserver cert, and etcd. DNS entries for the in-cluster kubernetes
 	// service endpoint are added later when the certificates are created.
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(s.AgentConfig.NodeName, s.AgentConfig.NodeIP)
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
 	if err != nil {
 		return err
 	}
 	s.ServerConfig.ServerNodeName = nodeName
-	s.ServerConfig.TLSSan = append(s.ServerConfig.TLSSan, "127.0.0.1", "localhost", nodeName)
+	s.ServerConfig.SANs = append(s.ServerConfig.SANs, "127.0.0.1", "::1", "localhost", nodeName)
 	for _, ip := range nodeIPs {
-		s.ServerConfig.TLSSan = append(s.ServerConfig.TLSSan, ip.String())
+		s.ServerConfig.SANs = append(s.ServerConfig.SANs, ip.String())
 	}
 
 	// configure ClusterIPRanges
-	if len(s.ServerConfig.ClusterCIDR) == 0 {
-		s.ServerConfig.ClusterCIDR = []string{"10.42.0.0/16"}
+	_, _, IPv6only, _ := util.GetFirstIP(nodeIPs)
+	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
+		clusterCIDR := "10.42.0.0/16"
+		if IPv6only {
+			clusterCIDR = "fd:42::/56"
+		}
+		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
 	}
 	for _, cidr := range cmds.ServerConfig.ClusterCIDR {
 		for _, v := range strings.Split(cidr, ",") {
@@ -137,15 +147,20 @@ func (s *Server) Run(app *cli.Context) error {
 	}
 
 	// set ClusterIPRange to the first IPv4 block, for legacy clients
-	clusterIPRange, err := util.GetFirst4Net(s.ServerConfig.ClusterIPRanges)
+	// unless only IPv6 range given
+	clusterIPRange, err := util.GetFirstNet(s.ServerConfig.ClusterIPRanges)
 	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4 cluster-cidr")
+		return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-cidr")
 	}
 	s.ServerConfig.ClusterIPRange = clusterIPRange
 
 	// configure ServiceIPRanges
 	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
-		cmds.ServerConfig.ServiceCIDR.Set("10.43.0.0/16")
+		serviceCIDR := "10.43.0.0/16"
+		if IPv6only {
+			serviceCIDR = "fd:43::/112"
+		}
+		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
 	}
 	for _, cidr := range cmds.ServerConfig.ServiceCIDR {
 		for _, v := range strings.Split(cidr, ",") {
@@ -158,15 +173,16 @@ func (s *Server) Run(app *cli.Context) error {
 	}
 
 	// set ServiceIPRange to the first IPv4 block, for legacy clients
-	serviceIPRange, err := util.GetFirst4Net(s.ServerConfig.ServiceIPRanges)
+	// unless only IPv6 range given
+	serviceIPRange, err := util.GetFirstNet(s.ServerConfig.ServiceIPRanges)
 	if err != nil {
-		return errors.Wrap(err, "cannot configure IPv4 service-cidr")
+		return errors.Wrap(err, "cannot configure IPv4/IPv6 service-cidr")
 	}
 	s.ServerConfig.ServiceIPRange = serviceIPRange
 
 	s.ServerConfig.ServiceNodePortRange, err = utilnet.ParsePortRange(s.ServerConfig.ServiceNodePortRangeStr)
 	if err != nil {
-		return errors.Wrapf(err, "invalid port range %s", s.ServerConfig.ServiceNodePortRangeStr)
+		return errors.Wrapf(err, "invalid port range %s", s.ServerConfig.ServiceNodePortRange)
 	}
 
 	// the apiserver service does not yet support dual-stack operation
@@ -174,11 +190,12 @@ func (s *Server) Run(app *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	s.ServerConfig.TLSSan = append(s.ServerConfig.TLSSan, apiServerServiceIP.String())
+	s.ServerConfig.SANs = append(s.ServerConfig.SANs, apiServerServiceIP.String())
 
 	// If cluster-dns CLI arg is not set, we set ClusterDNS address to be the first IPv4 ServiceCIDR network + 10,
 	// i.e. when you set service-cidr to 192.168.0.0/16 and don't provide cluster-dns, it will be set to 192.168.0.10
-	// If there are no IPv4 ServiceCIDRs, an error will be raised.
+	// If there are no IPv4 ServiceCIDRs, an IPv6 ServiceCIDRs will be used.
+	// If neither of IPv4 or IPv6 are found an error is raised.
 	if len(s.ServerConfig.ClusterDNS) == 0 {
 		clusterDNS, err := utilsnet.GetIndexedIP(s.ServerConfig.ServiceIPRange, 10)
 		if err != nil {
@@ -187,7 +204,7 @@ func (s *Server) Run(app *cli.Context) error {
 		s.ServerConfig.ClusterDNSIP = clusterDNS
 		s.ServerConfig.ClusterDNSIPs = []net.IP{s.ServerConfig.ClusterDNSIP}
 	} else {
-		for _, ip := range s.ServerConfig.ClusterDNS {
+		for _, ip := range cmds.ServerConfig.ClusterDNS {
 			for _, v := range strings.Split(ip, ",") {
 				parsed := net.ParseIP(v)
 				if parsed == nil {
@@ -197,15 +214,26 @@ func (s *Server) Run(app *cli.Context) error {
 			}
 		}
 		// Set ClusterDNS to the first IPv4 address, for legacy clients
-		clusterDNS4IP, err := util.GetFirst4(s.ServerConfig.ClusterDNSIPs)
+		// unless only IPv6 range given
+		clusterDNS, _, _, err := util.GetFirstIP(s.ServerConfig.ClusterDNSIPs)
 		if err != nil {
-			return errors.Wrap(err, "cannot configure IPv4 cluster-dns address")
+			return errors.Wrap(err, "cannot configure IPv4/IPv6 cluster-dns address")
 		}
-		s.ServerConfig.ClusterDNSIP = clusterDNS4IP
+		s.ServerConfig.ClusterDNSIP = clusterDNS
 	}
 
 	if err := s.validateNetworkConfiguration(); err != nil {
 		return err
+	}
+
+	if s.ServerConfig.DefaultLocalStoragePath == "" {
+		dataDir, err := datadir.LocalHome(s.ServerConfig.DataDir, false)
+		if err != nil {
+			return err
+		}
+		s.ServerConfig.DefaultLocalStoragePath = filepath.Join(dataDir, "/storage")
+	} else {
+		s.ServerConfig.DefaultLocalStoragePath = s.ServerConfig.DefaultLocalStoragePath
 	}
 
 	s.ServerConfig.Skips = map[string]bool{}
@@ -240,9 +268,6 @@ func (s *Server) Run(app *cli.Context) error {
 
 	s.ServerConfig.StartupHooks = append(s.ServerConfig.StartupHooks, s.ServerConfig.StartupHooks...)
 
-	s.ServerConfig.LeaderControllers = append(s.ServerConfig.LeaderControllers, s.LeaderControllers...)
-	s.ServerConfig.Controllers = append(s.ServerConfig.Controllers, s.Controllers...)
-
 	// TLS config based on mozilla ssl-config generator
 	// https://ssl-config.mozilla.org/#server=golang&version=1.13.6&config=intermediate&guideline=5.4
 	// Need to disable the TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 Cipher for TLS1.2
@@ -275,13 +300,6 @@ func (s *Server) Run(app *cli.Context) error {
 		s.ServerConfig.DisableScheduler = true
 		s.ServerConfig.DisableCCM = true
 
-		// only close the agentReady channel in case of k3s restoration, because k3s does not start
-		// the agent until server returns successfully, unlike rke2's agent which starts in parallel
-		// with the server
-		if s.ServerConfig.SupervisorPort == s.ServerConfig.HTTPSPort {
-			close(agentReady)
-		}
-
 		dataDir, err := datadir.LocalHome(s.ServerConfig.DataDir, false)
 		if err != nil {
 			return err
@@ -309,7 +327,7 @@ func (s *Server) Run(app *cli.Context) error {
 
 	ctx := signals.SetupSignalContext()
 
-	if err := server.StartServer(ctx, &s.ServerConfig, cfg); err != nil {
+	if err := s.StartServer(ctx); err != nil {
 		return err
 	}
 
@@ -329,15 +347,12 @@ func (s *Server) Run(app *cli.Context) error {
 		}
 	}()
 
-	if s.ServerConfig.DisableAgent {
-		close(agentReady)
-		<-ctx.Done()
-		return nil
-	}
-
 	ip := s.ServerConfig.BindAddress
 	if ip == "" {
 		ip = "127.0.0.1"
+		if IPv6only {
+			ip = "[::1]"
+		}
 	}
 
 	url := fmt.Sprintf("https://%s:%d", ip, s.ServerConfig.SupervisorPort)
@@ -356,7 +371,6 @@ func (s *Server) Run(app *cli.Context) error {
 	agentConfig.DisableServiceLB = s.ServerConfig.DisableServiceLB
 	agentConfig.ETCDAgent = s.ServerConfig.DisableAPIServer
 	agentConfig.ClusterReset = s.ServerConfig.ClusterReset
-
 	agentConfig.Rootless = s.ServerConfig.Rootless
 
 	if agentConfig.Rootless {
@@ -365,11 +379,19 @@ func (s *Server) Run(app *cli.Context) error {
 	}
 
 	if s.ServerConfig.DisableAPIServer {
+		if s.ServerConfig.ServerURL != "" {
+			agentConfig.ServerURL = s.ServerConfig.ServerURL
+		}
 		// initialize the apiAddress Channel for receiving the api address from etcd
-		agentConfig.APIAddressCh = make(chan string, 1)
-		s.setAPIAddressChannel(ctx)
-		defer close(agentConfig.APIAddressCh)
+		agentConfig.APIAddressCh = make(chan []string)
+		go s.getAPIAddressFromEtcd(ctx, agentConfig)
 	}
+
+	if s.ServerConfig.DisableAgent {
+		agentConfig.ContainerRuntimeEndpoint = "/dev/null"
+		return agent.RunStandalone(ctx, agentConfig)
+	}
+
 	return agent.Run(ctx, agentConfig)
 }
 
@@ -398,30 +420,17 @@ func (s *Server) validateNetworkConfiguration() error {
 		return errors.New("dual-stack cluster-dns is not supported")
 	}
 
-	return nil
-}
-
-// setAPIAddressChannel will try to get the api address key from etcd and when it succeed it will
-// set the APIAddressCh channel with its value,the code will not block operation and will
-// run the operation in a goroutine
-func (s *Server) setAPIAddressChannel(ctx context.Context) {
-	// start a goroutine to check for the server ip if set from etcd in case of rke2
-	go s.getAPIAddressFromEtcd(ctx)
-	return
-}
-
-func (s *Server) getAPIAddressFromEtcd(ctx context.Context) {
-	t := time.NewTicker(5 * time.Second)
-	defer t.Stop()
-	for range t.C {
-		serverAddress, err := etcd.GetAPIServerURLFromETCD(ctx, s.ServerConfig)
-		if err == nil {
-			s.AgentConfig.ServerURL = "https://" + serverAddress
-			s.AgentConfig.APIAddressCh <- s.AgentConfig.ServerURL
-			break
+	IPv6OnlyService, _ := util.IsIPv6OnlyCIDRs(s.ServerConfig.ServiceIPRanges)
+	if IPv6OnlyService {
+		if s.ServerConfig.DisableNPC == false {
+			return errors.New("network policy enforcement is not compatible with IPv6 only operation; server must be restarted with --disable-network-policy")
 		}
-		logrus.Warn(err)
+		if s.ServerConfig.FlannelBackend != config.FlannelBackendNone {
+			return errors.New("Flannel is not compatible with IPv6 only operation; server must be restarted with --flannel-backend=none")
+		}
 	}
+
+	return nil
 }
 
 func getArgValueFromList(searchArg string, argList []string) string {
@@ -435,4 +444,21 @@ func getArgValueFromList(searchArg string, argList []string) string {
 		}
 	}
 	return value
+}
+
+func (s *Server) getAPIAddressFromEtcd(ctx context.Context, agentConfig cmds.Agent) {
+	defer close(agentConfig.APIAddressCh)
+	for {
+		toCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(toCtx, &ServerConfig)
+		if err == nil && len(serverAddresses) > 0 {
+			agentConfig.APIAddressCh <- serverAddresses
+			break
+		}
+		if !errors.Is(err, etcd.ErrAddressNotSet) {
+			logrus.Warnf("Failed to get apiserver address from etcd: %v", err)
+		}
+		<-toCtx.Done()
+	}
 }

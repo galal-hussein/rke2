@@ -16,10 +16,11 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/nodepassword"
+	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
-	"github.com/rancher/k3s/pkg/nodepassword"
-	"github.com/rancher/k3s/pkg/version"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/server/bootstrap"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
@@ -31,22 +32,27 @@ const (
 	staticURL = "/static/"
 )
 
-func (s *Server) router(ctx context.Context) http.Handler {
+func (s *Server) router(ctx context.Context, cfg *cmds.Server) http.Handler {
 	serverConfig := s.ServerConfig
-	nodeAuth := s.passwordBootstrap(ctx)
+	nodeAuth := passwordBootstrap(ctx, serverConfig)
 
 	prefix := "/v1-" + version.Program
 	authed := mux.NewRouter()
 	authed.Use(authMiddleware(serverConfig, version.Program+":agent"))
-	authed.NotFoundHandler = apiserver(serverConfig.Runtime)
 	authed.Path(prefix + "/serving-kubelet.crt").Handler(servingKubeletCert(serverConfig, serverConfig.Runtime.ServingKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kubelet.crt").Handler(clientKubeletCert(serverConfig, serverConfig.Runtime.ClientKubeletKey, nodeAuth))
 	authed.Path(prefix + "/client-kube-proxy.crt").Handler(fileHandler(serverConfig.Runtime.ClientKubeProxyCert, serverConfig.Runtime.ClientKubeProxyKey))
 	authed.Path(prefix + "/client-" + version.Program + "-controller.crt").Handler(fileHandler(serverConfig.Runtime.ClientK3sControllerCert, serverConfig.Runtime.ClientK3sControllerKey))
 	authed.Path(prefix + "/client-ca.crt").Handler(fileHandler(serverConfig.Runtime.ClientCA))
 	authed.Path(prefix + "/server-ca.crt").Handler(fileHandler(serverConfig.Runtime.ServerCA))
-	authed.Path(prefix + "/config").Handler(configHandler(serverConfig))
+	authed.Path(prefix + "/config").Handler(configHandler(serverConfig, cfg))
 	authed.Path(prefix + "/readyz").Handler(readyzHandler(serverConfig))
+
+	if cfg.DisableAPIServer {
+		authed.NotFoundHandler = apiserverDisabled()
+	} else {
+		authed.NotFoundHandler = apiserver(serverConfig.Runtime)
+	}
 
 	nodeAuthed := mux.NewRouter()
 	nodeAuthed.Use(authMiddleware(serverConfig, "system:nodes"))
@@ -84,6 +90,16 @@ func apiserver(runtime *config.ControlRuntime) http.Handler {
 			resp.Header().Set("Content-length", strconv.Itoa(len(data)))
 			resp.Write(data)
 		}
+	})
+}
+
+func apiserverDisabled() http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		data := []byte("apiserver disabled")
+		resp.WriteHeader(http.StatusServiceUnavailable)
+		resp.Header().Set("Content-Type", "text/plain")
+		resp.Header().Set("Content-length", strconv.Itoa(len(data)))
+		resp.Write(data)
 	})
 }
 
@@ -272,13 +288,17 @@ func fileHandler(fileName ...string) http.Handler {
 	})
 }
 
-func configHandler(server *config.Server) http.Handler {
+func configHandler(server *config.Server, cfg *cmds.Server) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.TLS == nil {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
-
+		// Startup hooks may read and modify cmds.Server in a goroutine, but as these are copied into
+		// config.Control before the startup hooks are called, any modifications need to be sync'd back
+		// into the struct before it is sent to agents.
+		// At this time we don't sync all the fields, just those known to be touched by startup hooks.
+		server.DisableKubeProxy = cfg.DisableKubeProxy
 		resp.Header().Set("content-type", "application/json")
 		if err := json.NewEncoder(resp).Encode(server); err != nil {
 			logrus.Errorf("Failed to encode agent config: %v", err)
@@ -331,8 +351,8 @@ func sendError(err error, resp http.ResponseWriter, status ...int) {
 // nodePassBootstrapper returns a node name, or http error code and error
 type nodePassBootstrapper func(req *http.Request) (string, int, error)
 
-func (s *Server) passwordBootstrap(ctx context.Context) nodePassBootstrapper {
-	runtime := s.ServerConfig.Runtime
+func passwordBootstrap(ctx context.Context, config *config.Server) nodePassBootstrapper {
+	runtime := config.Runtime
 	var secretClient coreclient.SecretClient
 	var once sync.Once
 
@@ -348,7 +368,7 @@ func (s *Server) passwordBootstrap(ctx context.Context) nodePassBootstrapper {
 				secretClient = runtime.Core.Core().V1().Secret()
 			} else if nodeName == os.Getenv("NODE_NAME") {
 				// or verify the password locally and ensure a secret later
-				return verifyLocalPassword(ctx, s.ServerConfig.Runtime, &once, nodeName, nodePassword)
+				return verifyLocalPassword(ctx, config, &once, nodeName, nodePassword)
 			} else {
 				// or reject the request until the core is ready
 				return "", http.StatusServiceUnavailable, errors.New("runtime core not ready")
@@ -363,9 +383,12 @@ func (s *Server) passwordBootstrap(ctx context.Context) nodePassBootstrapper {
 	})
 }
 
-func verifyLocalPassword(ctx context.Context, runtime *config.ControlRuntime, once *sync.Once, nodeName, nodePassword string) (string, int, error) {
+func verifyLocalPassword(ctx context.Context, config *config.Server, once *sync.Once, nodeName, nodePassword string) (string, int, error) {
 	// use same password file location that the agent creates
 	nodePasswordRoot := "/"
+	if config.Rootless {
+		nodePasswordRoot = filepath.Join(config.DataDir, "agent")
+	}
 	nodeConfigPath := filepath.Join(nodePasswordRoot, "etc", "rancher", "node")
 	nodePasswordFile := filepath.Join(nodeConfigPath, "password")
 
@@ -381,6 +404,7 @@ func verifyLocalPassword(ctx context.Context, runtime *config.ControlRuntime, on
 
 	// make sure the secret is created when the api server is ready
 	ensureSecret := func() {
+		runtime := config.Runtime
 		for {
 			select {
 			case <-ctx.Done():

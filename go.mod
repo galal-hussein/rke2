@@ -61,16 +61,21 @@ replace (
 
 require (
 	github.com/Microsoft/hcsshim v0.9.2
+	github.com/containerd/containerd v1.6.0-rc.1
 	github.com/containerd/continuity v0.2.2
+	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
+	github.com/erikdubbelboer/gspt v0.0.0-20190125194910-e68493906b83
 	github.com/google/go-containerregistry v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/gorilla/mux v1.8.0
 	github.com/iamacarpet/go-win64api v0.0.0-20210311141720-fe38760bed28
 	github.com/k3s-io/helm-controller v0.11.7
 	github.com/k3s-io/k3s v1.23.5-0.20220309000057-8083ef5824f2 // master
+	github.com/k3s-io/kine v0.8.1
 	github.com/onsi/ginkgo/v2 v2.1.1
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
+	github.com/rancher/dynamiclistener v0.3.1
 	github.com/rancher/wharfie v0.5.2
 	github.com/rancher/wins v0.1.1
 	github.com/rancher/wrangler v0.8.10
@@ -83,6 +88,7 @@ require (
 	k8s.io/apimachinery v0.23.4
 	k8s.io/apiserver v0.23.4
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	k8s.io/component-base v0.23.4
 	k8s.io/cri-api v0.24.0-alpha.1
 	k8s.io/kubernetes v1.23.4
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed

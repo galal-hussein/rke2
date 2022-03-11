@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/k3s/pkg/cluster"
+	"github.com/k3s-io/k3s/pkg/cluster"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/server/secretsencrypt"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
@@ -148,7 +148,7 @@ func encryptionEnable(ctx context.Context, server *config.Server, enable bool) e
 	} else {
 		return fmt.Errorf("unable to enable/disable secrets encryption, unknown configuration")
 	}
-	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
+	return cluster.Save(ctx, server, true)
 }
 
 func encryptionConfigHandler(ctx context.Context, server *config.Server) http.Handler {
@@ -217,7 +217,7 @@ func encryptionPrepare(ctx context.Context, server *config.Server, force bool) e
 	if err = secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionPrepare); err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
+	return cluster.Save(ctx, server, true)
 }
 
 func encryptionRotate(ctx context.Context, server *config.Server, force bool) error {
@@ -246,7 +246,7 @@ func encryptionRotate(ctx context.Context, server *config.Server, force bool) er
 	if err := secretsencrypt.WriteEncryptionHashAnnotation(server.Runtime, node, secretsencrypt.EncryptionRotate); err != nil {
 		return err
 	}
-	return cluster.Save(ctx, server, server.Runtime.EtcdConfig, true)
+	return cluster.Save(ctx, server, true)
 }
 
 func encryptionReencrypt(ctx context.Context, server *config.Server, force bool, skip bool) error {
@@ -324,7 +324,7 @@ func getServerNodes(core core.Interface) ([]corev1.Node, error) {
 
 // verifyEncryptionHashAnnotation checks that all nodes are on the same stage,
 // and that a request for new stage is valid
-func verifyEncryptionHashAnnotation(runtime *config.ServerRuntime, core core.Interface, prevStage string) error {
+func verifyEncryptionHashAnnotation(runtime *config.ControlRuntime, core core.Interface, prevStage string) error {
 
 	var firstHash string
 	var firstNodeName string

@@ -3,10 +3,9 @@ package main
 import (
 	"os"
 
+	"github.com/k3s-io/k3s/pkg/cli/cert"
+	"github.com/k3s-io/k3s/pkg/cli/etcdsnapshot"
 	"github.com/k3s-io/k3s/pkg/configfilearg"
-	"github.com/rancher/k3s/pkg/cli/cert"
-	"github.com/rancher/k3s/pkg/cli/etcdsnapshot"
-	"github.com/rancher/k3s/pkg/configfilearg"
 	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
