@@ -14,20 +14,19 @@ import (
 	"time"
 
 	"github.com/k3s-io/helm-controller/pkg/helm"
-	"github.com/k3s-io/k3s/pkg/apiaddresses"
-	"github.com/k3s-io/k3s/pkg/clientaccess"
 	"github.com/k3s-io/k3s/pkg/daemons/control"
-	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/deploy"
-	"github.com/k3s-io/k3s/pkg/node"
-	"github.com/k3s-io/k3s/pkg/nodepassword"
-	"github.com/k3s-io/k3s/pkg/secretsencrypt"
-	"github.com/k3s-io/k3s/pkg/servicelb"
 	"github.com/k3s-io/k3s/pkg/static"
-	"github.com/k3s-io/k3s/pkg/util"
-	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/clientaccess"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/datadir"
+	"github.com/rancher/rke2/pkg/node"
+	"github.com/rancher/rke2/pkg/nodepassword"
+	"github.com/rancher/rke2/pkg/server/apiaddresses"
+	"github.com/rancher/rke2/pkg/server/secretsencrypt"
+	"github.com/rancher/rke2/pkg/util"
+	"github.com/rancher/rke2/pkg/version"
 	v1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/leader"
 	"github.com/rancher/wrangler/pkg/resolvehome"
@@ -58,7 +57,7 @@ func (s *Server) StartServer(ctx context.Context) error {
 	}
 
 	// this will need repackaging
-	if err := control.Server(ctx, &s.ServerConfig); err != nil {
+	if err := control.Server(ctx, s.ServerConfig); err != nil {
 		return errors.Wrap(err, "starting kubernetes")
 	}
 
@@ -199,7 +198,6 @@ func (s *Server) coreControllers(ctx context.Context, sc *Context) error {
 	// apply SystemDefaultRegistry setting to Helm and ServiceLB before starting controllers
 	if s.ServerConfig.SystemDefaultRegistry != "" {
 		helm.DefaultJobImage = s.ServerConfig.SystemDefaultRegistry + "/" + helm.DefaultJobImage
-		servicelb.DefaultLBImage = s.ServerConfig.SystemDefaultRegistry + "/" + servicelb.DefaultLBImage
 	}
 
 	if !s.ServerConfig.DisableHelmController {
@@ -220,7 +218,7 @@ func (s *Server) coreControllers(ctx context.Context, sc *Context) error {
 	if s.ServerConfig.EncryptSecrets {
 		if err := secretsencrypt.Register(ctx,
 			sc.K8s,
-			&s.ServerConfig,
+			s.ServerConfig,
 			sc.Core.Core().V1().Node(),
 			sc.Core.Core().V1().Secret()); err != nil {
 			return err

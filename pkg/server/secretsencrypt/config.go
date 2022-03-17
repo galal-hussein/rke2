@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/k3s-io/k3s/pkg/version"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/sirupsen/logrus"

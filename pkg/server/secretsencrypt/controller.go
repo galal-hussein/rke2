@@ -29,7 +29,7 @@ const (
 
 type handler struct {
 	ctx           context.Context
-	controlConfig *config.Control
+	controlConfig *config.Server
 	nodes         coreclient.NodeController
 	secrets       coreclient.SecretController
 	recorder      record.EventRecorder
@@ -38,7 +38,7 @@ type handler struct {
 func Register(
 	ctx context.Context,
 	k8s kubernetes.Interface,
-	controlConfig *config.Control,
+	controlConfig *config.Server,
 	nodes coreclient.NodeController,
 	secrets coreclient.SecretController,
 ) error {

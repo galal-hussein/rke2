@@ -75,7 +75,6 @@ var secretsEncryptSubcommands = []cli.Command{
 	},
 }
 
-<<<<<<< HEAD
 func NewSecretsEncryptCommand() cli.Command {
 
 	var modifiedSubcommands []cli.Command
@@ -91,15 +90,4 @@ func NewSecretsEncryptCommand() cli.Command {
 		}))
 	}
 	return cmds.NewSecretsEncryptCommand(cli.ShowAppHelp, modifiedSubcommands)
-=======
-func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
-	return cli.Command{
-		Name:            SecretsEncryptCommand,
-		Usage:           "Control secrets encryption and keys rotation",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          action,
-		Subcommands:     subcommands,
-	}
->>>>>>> staging
 }

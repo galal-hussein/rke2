@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/agent/config"
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/cli/defaults"
 	"github.com/rancher/rke2/pkg/images"
 	"github.com/rancher/rke2/pkg/podexecutor"
