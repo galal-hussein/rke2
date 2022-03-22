@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/configfilearg"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/urfave/cli"
 )
@@ -113,7 +112,6 @@ func NewEtcdSnapshotCommand(action func(*cli.Context) error, subcommands []cli.C
 		Subcommands:     subcommands,
 		Flags:           EtcdSnapshotFlags,
 	}
-	configfilearg.DefaultParser.ValidFlags[cmd.Name] = cmd.Flags
 	return cmd
 }
 

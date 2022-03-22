@@ -14,12 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/agent/config"
 	"github.com/k3s-io/k3s/pkg/cluster/managed"
 	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/pkg/errors"
-	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/cli/defaults"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/images"
 	"github.com/rancher/rke2/pkg/podexecutor"
 	"github.com/sirupsen/logrus"
@@ -33,8 +32,8 @@ const (
 	MemoryLimit   = "memory-limit"
 )
 
-func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor.StaticPodConfig, error) {
-	resolver, err := images.NewResolver(cmds.RootConfig.Images)
+func (r *RKE2) initExecutor(clx *cli.Context, dataDir string) (*podexecutor.StaticPodConfig, error) {
+	resolver, err := images.NewResolver(r.rootConfig.Images)
 	if err != nil {
 		return nil, err
 	}
@@ -52,18 +51,18 @@ func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor
 		if clx.IsSet("node-external-ip") {
 			return nil, errors.New("can't set node-external-ip while using cloud provider")
 		}
-		cmds.ServerConfig.DisableCCM = true
+		r.serverConfig.DisableCCM = true
 	}
 	var cpConfig *podexecutor.CloudProviderConfig
-	if cmds.RootConfig.CloudProviderConfig != "" && cmds.RootConfig.CloudProviderName == "" {
+	if r.rootConfig.CloudProviderConfig != "" && r.rootConfig.CloudProviderName == "" {
 		return nil, fmt.Errorf("--cloud-provider-config requires --cloud-provider-name to be provided")
 	}
-	if cmds.RootConfig.CloudProviderName != "" {
+	if r.rootConfig.CloudProviderName != "" {
 		cpConfig = &podexecutor.CloudProviderConfig{
-			Name: cmds.RootConfig.CloudProviderName,
-			Path: cmds.RootConfig.CloudProviderConfig,
+			Name: r.rootConfig.CloudProviderName,
+			Path: r.rootConfig.CloudProviderConfig,
 		}
-		if cmds.AgentConfig.NodeName && cmds.RootConfig.CloudProviderName == "aws" {
+		if r.agentConfig.NodeName == "" && r.rootConfig.CloudProviderName == "aws" {
 			fqdn := hostnameFromMetadataEndpoint(context.Background())
 			if fqdn == "" {
 				hostFQDN, err := hostnameFQDN()
@@ -72,12 +71,12 @@ func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor
 				}
 				fqdn = hostFQDN
 			}
-			cmds.AgentConfig.NodeName = fqdn
+			r.agentConfig.NodeName = fqdn
 		}
 	}
 
-	if cmds.AgentConfig.KubeletPath == "" {
-		cmds.AgentConfig.KubeletPath = "kubelet"
+	if r.rootConfig.KubeletPath == "" {
+		r.rootConfig.KubeletPath = "kubelet"
 	}
 
 	var controlPlaneResources podexecutor.ControlPlaneResources
@@ -125,8 +124,8 @@ func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor
 
 	var parsedRequestsLimits = make(map[string]string)
 
-	if cmds.RootConfig.ControlPlaneResourceRequests != "" {
-		for _, rawRequest := range strings.Split(cmds.RootConfig.ControlPlaneResourceRequests, ",") {
+	if r.rootConfig.ControlPlaneResourceRequests != "" {
+		for _, rawRequest := range strings.Split(r.rootConfig.ControlPlaneResourceRequests, ",") {
 			v := strings.SplitN(rawRequest, "=", 2)
 			if len(v) != 2 {
 				logrus.Fatalf("incorrectly formatted control plane resource request specified: %s", rawRequest)
@@ -135,8 +134,8 @@ func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor
 		}
 	}
 
-	if cmds.RootConfig.ControlPlaneResourceLimits != "" {
-		for _, rawLimit := range strings.Split(cmds.RootConfig.ControlPlaneResourceLimits, ",") {
+	if r.rootConfig.ControlPlaneResourceLimits != "" {
+		for _, rawLimit := range strings.Split(r.rootConfig.ControlPlaneResourceLimits, ",") {
 			v := strings.SplitN(rawLimit, "=", 2)
 			if len(v) != 2 {
 				logrus.Fatalf("incorrectly formatted control plane resource request specified: %s", rawLimit)
@@ -157,21 +156,21 @@ func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor
 	logrus.Debugf("Parsed control plane requests/limits: %+v\n", controlPlaneResources)
 
 	extraEnv := podexecutor.ControlPlaneEnv{
-		KubeAPIServer:          cmds.RootConfig.ExtraEnv.KubeAPIServer.Value(),
-		KubeScheduler:          cmds.RootConfig.ExtraEnv.KubeScheduler.Value(),
-		KubeControllerManager:  cmds.RootConfig.ExtraEnv.KubeControllerManager.Value(),
-		KubeProxy:              cmds.RootConfig.ExtraEnv.KubeProxy.Value(),
-		Etcd:                   cmds.RootConfig.ExtraEnv.Etcd.Value(),
-		CloudControllerManager: cmds.RootConfig.ExtraEnv.CloudControllerManager.Value(),
+		KubeAPIServer:          r.rootConfig.ExtraEnv.KubeAPIServer.Value(),
+		KubeScheduler:          r.rootConfig.ExtraEnv.KubeScheduler.Value(),
+		KubeControllerManager:  r.rootConfig.ExtraEnv.KubeControllerManager.Value(),
+		KubeProxy:              r.rootConfig.ExtraEnv.KubeProxy.Value(),
+		Etcd:                   r.rootConfig.ExtraEnv.Etcd.Value(),
+		CloudControllerManager: r.rootConfig.ExtraEnv.CloudControllerManager.Value(),
 	}
 
 	extraMounts := podexecutor.ControlPlaneMounts{
-		KubeAPIServer:          cmds.RootConfig.ExtraMounts.KubeAPIServer.Value(),
-		KubeScheduler:          cmds.RootConfig.ExtraMounts.KubeScheduler.Value(),
-		KubeControllerManager:  cmds.RootConfig.ExtraMounts.KubeControllerManager.Value(),
-		KubeProxy:              cmds.RootConfig.ExtraMounts.KubeProxy.Value(),
-		Etcd:                   cmds.RootConfig.ExtraMounts.Etcd.Value(),
-		CloudControllerManager: cmds.RootConfig.ExtraMounts.CloudControllerManager.Value(),
+		KubeAPIServer:          r.rootConfig.ExtraMounts.KubeAPIServer.Value(),
+		KubeScheduler:          r.rootConfig.ExtraMounts.KubeScheduler.Value(),
+		KubeControllerManager:  r.rootConfig.ExtraMounts.KubeControllerManager.Value(),
+		KubeProxy:              r.rootConfig.ExtraMounts.KubeProxy.Value(),
+		Etcd:                   r.rootConfig.ExtraMounts.Etcd.Value(),
+		CloudControllerManager: r.rootConfig.ExtraMounts.CloudControllerManager.Value(),
 	}
 
 	return &podexecutor.StaticPodConfig{
@@ -182,9 +181,9 @@ func initExecutor(clx *cli.Context, dataDir string, isServer bool) (*podexecutor
 		CloudProvider:         cpConfig,
 		DataDir:               dataDir,
 		AuditPolicyFile:       clx.String("audit-policy-file"),
-		KubeletPath:           cmds.RootConfig.KubeletPath,
-		DisableETCD:           cmds.ServerConfig.DisableETCD,
-		IsServer:              isServer,
+		KubeletPath:           r.rootConfig.KubeletPath,
+		DisableETCD:           r.serverConfig.DisableETCD,
+		IsServer:              r.isServer,
 		ControlPlaneResources: controlPlaneResources,
 		ControlPlaneEnv:       extraEnv,
 		ControlPlaneMounts:    extraMounts,

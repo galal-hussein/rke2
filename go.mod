@@ -72,6 +72,7 @@ require (
 	github.com/k3s-io/helm-controller v0.11.7
 	github.com/k3s-io/k3s v1.23.5-0.20220309000057-8083ef5824f2 // master
 	github.com/k3s-io/kine v0.8.1
+	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/onsi/ginkgo/v2 v2.1.1
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
@@ -81,15 +82,21 @@ require (
 	github.com/rancher/wrangler v0.8.10
 	github.com/rootless-containers/rootlesskit v0.14.5
 	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.5
+	go.etcd.io/etcd/client/v3 v3.5.1
+	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	google.golang.org/grpc v1.44.0
+	gopkg.in/yaml.v2 v2.4.0
+	inet.af/tcpproxy v0.0.0-20200125044825-b6bb9b5b8252
 	k8s.io/api v0.23.4
 	k8s.io/apimachinery v0.23.4
 	k8s.io/apiserver v0.23.4
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/component-base v0.23.4
 	k8s.io/cri-api v0.24.0-alpha.1
+	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.23.4
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 	sigs.k8s.io/yaml v1.2.0

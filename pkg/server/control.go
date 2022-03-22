@@ -112,8 +112,8 @@ func (s *Server) startOnAPIServerReady(ctx context.Context, wg *sync.WaitGroup) 
 }
 
 func (s *Server) runControllers(ctx context.Context, wg *sync.WaitGroup) error {
-	config := s.ServerConfig
-	sc, err := NewContext(ctx, config.Runtime.KubeConfigAdmin)
+	serverConfig := s.ServerConfig
+	sc, err := config.NewContext(ctx, serverConfig.Runtime.KubeConfigAdmin)
 	if err != nil {
 		return errors.Wrap(err, "failed to create new server context")
 	}
@@ -127,18 +127,18 @@ func (s *Server) runControllers(ctx context.Context, wg *sync.WaitGroup) error {
 	if err := nodepassword.MigrateFile(
 		sc.Core.Core().V1().Secret(),
 		sc.Core.Core().V1().Node(),
-		config.Runtime.NodePasswdFile); err != nil {
+		serverConfig.Runtime.NodePasswdFile); err != nil {
 		logrus.Warn(errors.Wrap(err, "error migrating node-password file"))
 	}
-	config.Runtime.Core = sc.Core
+	serverConfig.Runtime.Core = sc.Core
 
-	if config.Runtime.ClusterControllerStart != nil {
-		if err := config.Runtime.ClusterControllerStart(ctx); err != nil {
+	if serverConfig.Runtime.ClusterControllerStart != nil {
+		if err := serverConfig.Runtime.ClusterControllerStart(ctx); err != nil {
 			return errors.Wrap(err, "failed to start cluster controllers")
 		}
 	}
 
-	for _, controller := range config.Controllers {
+	for _, controller := range serverConfig.Controllers {
 		if err := controller(ctx, sc); err != nil {
 			return errors.Wrapf(err, "failed to start custom controller %s", util.GetFunctionName(controller))
 		}
@@ -152,12 +152,12 @@ func (s *Server) runControllers(ctx context.Context, wg *sync.WaitGroup) error {
 		if err := s.coreControllers(ctx, sc); err != nil {
 			panic(err)
 		}
-		if config.Runtime.LeaderElectedClusterControllerStart != nil {
-			if err := config.Runtime.LeaderElectedClusterControllerStart(ctx); err != nil {
+		if serverConfig.Runtime.LeaderElectedClusterControllerStart != nil {
+			if err := serverConfig.Runtime.LeaderElectedClusterControllerStart(ctx); err != nil {
 				panic(errors.Wrap(err, "failed to start leader elected cluster controllers"))
 			}
 		}
-		for _, controller := range config.LeaderControllers {
+		for _, controller := range serverConfig.LeaderControllers {
 			if err := controller(ctx, sc); err != nil {
 				panic(errors.Wrap(err, "leader controller"))
 			}
@@ -171,7 +171,7 @@ func (s *Server) runControllers(ctx context.Context, wg *sync.WaitGroup) error {
 
 	go s.setClusterDNSConfig(ctx, sc.Core.Core().V1().ConfigMap())
 
-	if config.NoLeaderElect {
+	if s.ServerConfig.NoLeaderElect {
 		go func() {
 			start(ctx)
 			<-ctx.Done()
@@ -186,7 +186,7 @@ func (s *Server) runControllers(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *Server) coreControllers(ctx context.Context, sc *Context) error {
+func (s *Server) coreControllers(ctx context.Context, sc *config.Context) error {
 	if err := node.Register(ctx,
 		!s.ServerConfig.Skips["coredns"],
 		sc.Core.Core().V1().Secret(),
@@ -228,7 +228,7 @@ func (s *Server) coreControllers(ctx context.Context, sc *Context) error {
 	return nil
 }
 
-func (s *Server) stageFiles(ctx context.Context, sc *Context) error {
+func (s *Server) stageFiles(ctx context.Context, sc *config.Context) error {
 	dataDir := filepath.Join(s.ServerConfig.DataDir, "static")
 	if err := static.Stage(dataDir); err != nil {
 		return err
@@ -271,7 +271,7 @@ func registryTemplate(registry string) string {
 
 // isHelmChartTraefikV1 checks for an existing HelmChart resource with spec.chart containing traefik-1,
 // as deployed by the legacy chart (https://%{KUBERNETES_API}%/static/charts/traefik-1.81.0.tgz)
-func isHelmChartTraefikV1(sc *Context) bool {
+func isHelmChartTraefikV1(sc *config.Context) bool {
 	prefix := "traefik-1."
 	helmChart, err := sc.Helm.Helm().V1().HelmChart().Get(metav1.NamespaceSystem, "traefik", metav1.GetOptions{})
 	if err != nil {

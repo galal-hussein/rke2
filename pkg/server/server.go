@@ -12,16 +12,14 @@ import (
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
 	"github.com/k3s-io/k3s/pkg/agent"
-	"github.com/k3s-io/k3s/pkg/agent/loadbalancer"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/clientaccess"
-	"github.com/k3s-io/k3s/pkg/datadir"
 	"github.com/k3s-io/k3s/pkg/etcd"
-	"github.com/k3s-io/k3s/pkg/netutil"
-	"github.com/k3s-io/k3s/pkg/server"
-	"github.com/k3s-io/k3s/pkg/token"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/agent/loadbalancer"
+	"github.com/rancher/rke2/pkg/clientaccess"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/datadir"
+	"github.com/rancher/rke2/pkg/token"
 	"github.com/rancher/rke2/pkg/util"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/rancher/wrangler/pkg/signals"
@@ -34,10 +32,8 @@ import (
 )
 
 type Server struct {
-	ServerConfig      *config.Server
-	AgentConfig       *config.Agent
-	Controllers       server.CustomControllers
-	LeaderControllers server.CustomControllers
+	ServerConfig *config.Server
+	AgentConfig  *config.Agent
 }
 
 func (s *Server) Run(app *cli.Context) error {
@@ -85,26 +81,22 @@ func (s *Server) Run(app *cli.Context) error {
 	}
 
 	if s.ServerConfig.DisableAPIServer {
-		s.ServerConfig.APIServerPort = cmds.AgentConfig.LBServerPort - 1
+		s.ServerConfig.APIServerPort = s.AgentConfig.LBServerPort - 1
 	}
 
-	if cmds.AgentConfig.FlannelIface != "" && len(cmds.AgentConfig.NodeIP) == 0 {
-		cmds.AgentConfig.NodeIP.Set(netutil.GetIPFromInterface(cmds.AgentConfig.FlannelIface))
-	}
-
-	if s.ServerConfig.PrivateIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
+	if s.ServerConfig.PrivateIP == "" && len(s.AgentConfig.NodeIP) != 0 {
 		// ignoring the error here is fine since etcd will fall back to the interface's IPv4 address
-		s.ServerConfig.PrivateIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
+		s.ServerConfig.PrivateIP, _, _ = util.GetFirstString(s.AgentConfig.NodeIP)
 	}
 
 	// if not set, try setting advertise-ip from agent node-external-ip
-	if s.ServerConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeExternalIP) != 0 {
-		s.ServerConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeExternalIP)
+	if s.ServerConfig.AdvertiseIP == "" && len(s.AgentConfig.NodeExternalIP) != 0 {
+		s.ServerConfig.AdvertiseIP, _, _ = util.GetFirstString(s.AgentConfig.NodeExternalIP)
 	}
 
 	// if not set, try setting advertise-ip from agent node-ip
-	if s.ServerConfig.AdvertiseIP == "" && len(cmds.AgentConfig.NodeIP) != 0 {
-		s.ServerConfig.AdvertiseIP, _, _ = util.GetFirstString(cmds.AgentConfig.NodeIP)
+	if s.ServerConfig.AdvertiseIP == "" && len(s.AgentConfig.NodeIP) != 0 {
+		s.ServerConfig.AdvertiseIP, _, _ = util.GetFirstString(s.AgentConfig.NodeIP)
 	}
 
 	// if we ended up with any advertise-ips, ensure they're added to the SAN list;
@@ -117,7 +109,7 @@ func (s *Server) Run(app *cli.Context) error {
 	// Ensure that we add the localhost name/ip and node name/ip to the SAN list. This list is shared by the
 	// certs for the supervisor, kube-apiserver cert, and etcd. DNS entries for the in-cluster kubernetes
 	// service endpoint are added later when the certificates are created.
-	nodeName, nodeIPs, err := util.GetHostnameAndIPs(cmds.AgentConfig.NodeName, cmds.AgentConfig.NodeIP)
+	nodeName, nodeIPs, err := util.GetHostnameAndIPs(s.AgentConfig.NodeName, s.AgentConfig.NodeIP)
 	if err != nil {
 		return err
 	}
@@ -129,14 +121,14 @@ func (s *Server) Run(app *cli.Context) error {
 
 	// configure ClusterIPRanges
 	_, _, IPv6only, _ := util.GetFirstIP(nodeIPs)
-	if len(cmds.ServerConfig.ClusterCIDR) == 0 {
+	if len(s.ServerConfig.ClusterCIDR) == 0 {
 		clusterCIDR := "10.42.0.0/16"
 		if IPv6only {
 			clusterCIDR = "fd:42::/56"
 		}
-		cmds.ServerConfig.ClusterCIDR.Set(clusterCIDR)
+		s.ServerConfig.ClusterCIDR.Set(clusterCIDR)
 	}
-	for _, cidr := range cmds.ServerConfig.ClusterCIDR {
+	for _, cidr := range s.ServerConfig.ClusterCIDR {
 		for _, v := range strings.Split(cidr, ",") {
 			_, parsed, err := net.ParseCIDR(v)
 			if err != nil {
@@ -155,14 +147,14 @@ func (s *Server) Run(app *cli.Context) error {
 	s.ServerConfig.ClusterIPRange = clusterIPRange
 
 	// configure ServiceIPRanges
-	if len(cmds.ServerConfig.ServiceCIDR) == 0 {
+	if len(s.ServerConfig.ServiceCIDR) == 0 {
 		serviceCIDR := "10.43.0.0/16"
 		if IPv6only {
 			serviceCIDR = "fd:43::/112"
 		}
-		cmds.ServerConfig.ServiceCIDR.Set(serviceCIDR)
+		s.ServerConfig.ServiceCIDR = []string{serviceCIDR}
 	}
-	for _, cidr := range cmds.ServerConfig.ServiceCIDR {
+	for _, cidr := range s.ServerConfig.ServiceCIDR {
 		for _, v := range strings.Split(cidr, ",") {
 			_, parsed, err := net.ParseCIDR(v)
 			if err != nil {
@@ -204,7 +196,7 @@ func (s *Server) Run(app *cli.Context) error {
 		s.ServerConfig.ClusterDNSIP = clusterDNS
 		s.ServerConfig.ClusterDNSIPs = []net.IP{s.ServerConfig.ClusterDNSIP}
 	} else {
-		for _, ip := range cmds.ServerConfig.ClusterDNS {
+		for _, ip := range s.ServerConfig.ClusterDNS {
 			for _, v := range strings.Split(ip, ",") {
 				parsed := net.ParseIP(v)
 				if parsed == nil {
@@ -384,7 +376,7 @@ func (s *Server) Run(app *cli.Context) error {
 		}
 		// initialize the apiAddress Channel for receiving the api address from etcd
 		agentConfig.APIAddressCh = make(chan []string)
-		go s.getAPIAddressFromEtcd(ctx, agentConfig)
+		go s.getAPIAddressFromEtcd(ctx)
 	}
 
 	if s.ServerConfig.DisableAgent {
@@ -446,14 +438,14 @@ func getArgValueFromList(searchArg string, argList []string) string {
 	return value
 }
 
-func (s *Server) getAPIAddressFromEtcd(ctx context.Context, agentConfig cmds.Agent) {
-	defer close(agentConfig.APIAddressCh)
+func (s *Server) getAPIAddressFromEtcd(ctx context.Context) {
+	defer close(s.AgentConfig.APIAddressCh)
 	for {
 		toCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(toCtx, &ServerConfig)
 		if err == nil && len(serverAddresses) > 0 {
-			agentConfig.APIAddressCh <- serverAddresses
+			s.AgentConfig.APIAddressCh <- serverAddresses
 			break
 		}
 		if !errors.Is(err, etcd.ErrAddressNotSet) {

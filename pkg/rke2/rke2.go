@@ -9,18 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/agent/config"
 	containerdk3s "github.com/k3s-io/k3s/pkg/agent/containerd"
 	"github.com/k3s-io/k3s/pkg/cli/agent"
 	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/cli/etcdsnapshot"
-	"github.com/k3s-io/k3s/pkg/cli/server"
 	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
 	"github.com/k3s-io/k3s/pkg/daemons/executor"
-	rawServer "github.com/k3s-io/k3s/pkg/server"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/controllers/cisnetworkpolicy"
-	"github.com/rancher/rke2/pkg/images"
+	"github.com/rancher/rke2/pkg/server"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,36 +25,6 @@ import (
 )
 
 var DefaultPodManifestPath = "pod-manifests"
-
-type Config struct {
-	AuditPolicyFile              string
-	CloudProviderConfig          string
-	CloudProviderName            string
-	Images                       images.ImageOverrideConfig
-	KubeletPath                  string
-	ControlPlaneResourceRequests string
-	ControlPlaneResourceLimits   string
-	ExtraMounts                  ExtraMounts
-	ExtraEnv                     ExtraEnv
-}
-
-type ExtraMounts struct {
-	KubeAPIServer          cli.StringSlice
-	KubeScheduler          cli.StringSlice
-	KubeControllerManager  cli.StringSlice
-	KubeProxy              cli.StringSlice
-	Etcd                   cli.StringSlice
-	CloudControllerManager cli.StringSlice
-}
-
-type ExtraEnv struct {
-	KubeAPIServer          cli.StringSlice
-	KubeScheduler          cli.StringSlice
-	KubeControllerManager  cli.StringSlice
-	KubeProxy              cli.StringSlice
-	Etcd                   cli.StringSlice
-	CloudControllerManager cli.StringSlice
-}
 
 // Valid CIS Profile versions
 const (
@@ -73,8 +40,24 @@ const (
 	CloudControllerManager = "cloud-controller-manager"
 )
 
-func Server(clx *cli.Context) error {
-	if err := setup(clx, cfg, true); err != nil {
+type RKE2 struct {
+	rootConfig   *config.RootConfig
+	serverConfig *config.Server
+	agentConfig  *config.Agent
+	isServer     bool
+}
+
+func NewRKE2(rootConfig *config.RootConfig, serverConfig *config.Server, agentConfig *config.Agent, isServer bool) *RKE2 {
+	return &RKE2{
+		rootConfig:   rootConfig,
+		serverConfig: serverConfig,
+		agentConfig:  agentConfig,
+		isServer:     isServer,
+	}
+}
+
+func (r *RKE2) Server(clx *cli.Context) error {
+	if err := r.setup(clx, r.serverConfig.DataDir); err != nil {
 		return err
 	}
 
@@ -106,24 +89,28 @@ func Server(clx *cli.Context) error {
 		cleanupStaticPodsOnSelfDelete(dataDir),
 	)
 
-	var leaderControllers rawServer.CustomControllers
+	var leaderControllers config.CustomControllers
 
 	if cisMode {
 		leaderControllers = append(leaderControllers, cisnetworkpolicy.Controller)
 	}
-
-	return server.RunWithControllers(clx, leaderControllers, rawServer.CustomControllers{})
+	r.serverConfig.LeaderControllers = leaderControllers
+	newServer := server.Server{
+		ServerConfig: r.serverConfig,
+		AgentConfig:  r.agentConfig,
+	}
+	return newServer.Run(clx)
 }
 
-func Agent(clx *cli.Context, cfg Config) error {
-	if err := setup(clx, cfg, false); err != nil {
+func (r *RKE2) Agent(clx *cli.Context) error {
+	if err := r.setup(clx, r.agentConfig.DataDir); err != nil {
 		return err
 	}
 	return agent.Run(clx)
 }
 
-func setup(clx *cli.Context, dataDir string, isServer bool) error {
-	ex, err := initExecutor(clx, dataDir, isServer)
+func (r *RKE2) setup(clx *cli.Context, dataDir string) error {
+	ex, err := r.initExecutor(clx, dataDir)
 	if err != nil {
 		return err
 	}
@@ -140,13 +127,13 @@ func setup(clx *cli.Context, dataDir string, isServer bool) error {
 		os.Remove(ForceRestartFile(dataDir))
 	}
 	disabledItems := map[string]bool{
-		"kube-apiserver":           cmds.ServerConfig.DisableAPIServer || forceRestart,
-		"kube-scheduler":           cmds.ServerConfig.DisableScheduler || forceRestart,
-		"kube-controller-manager":  cmds.ServerConfig.DisableControllerManager || forceRestart,
-		"cloud-controller-manager": cmds.ServerConfig.DisableCCM || forceRestart,
-		"etcd":                     cmds.ServerConfig.DisableETCD || forceRestart,
+		"kube-apiserver":           r.serverConfig.DisableAPIServer || forceRestart,
+		"kube-scheduler":           r.serverConfig.DisableScheduler || forceRestart,
+		"kube-controller-manager":  r.serverConfig.DisableControllerManager || forceRestart,
+		"cloud-controller-manager": r.serverConfig.DisableCCM || forceRestart,
+		"etcd":                     r.serverConfig.DisableETCD || forceRestart,
 	}
-	return removeOldPodManifests(dataDir, disabledItems, cmds.ServerConfig.ClusterReset)
+	return removeOldPodManifests(r.serverConfig.DataDir, disabledItems, r.serverConfig.ClusterReset)
 }
 
 func ForceRestartFile(dataDir string) string {

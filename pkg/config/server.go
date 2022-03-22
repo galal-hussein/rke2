@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
+	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
@@ -20,8 +21,8 @@ type Server struct {
 	APIServerBindAddress     string
 	APIServerPort            int
 	BindAddress              string
-	ClusterCIDR              []string
-	ClusterDNS               []string
+	ClusterCIDR              cli.StringSlice
+	ClusterDNS               cli.StringSlice
 	ClusterDomain            string
 	ClusterInit              bool
 	ClusterReset             bool
@@ -64,11 +65,11 @@ type Server struct {
 	EtcdSnapshotDir          string
 	EtcdSnapshotName         string
 	EtcdSnapshotRetention    int
-	ExtraAPIArgs             []string
-	ExtraCloudControllerArgs []string
-	ExtraControllerArgs      []string
-	ExtraEtcdArgs            []string
-	ExtraSchedulerArgs       []string
+	ExtraAPIArgs             cli.StringSlice
+	ExtraCloudControllerArgs cli.StringSlice
+	ExtraControllerArgs      cli.StringSlice
+	ExtraEtcdArgs            cli.StringSlice
+	ExtraSchedulerArgs       cli.StringSlice
 	FlannelBackend           string
 	FlannelIPv6Masq          bool
 	HTTPSPort                int
@@ -81,7 +82,7 @@ type Server struct {
 	SANs                     []string
 	ServerNodeName           string
 	ServerURL                string
-	ServiceCIDR              []string
+	ServiceCIDR              cli.StringSlice
 	ServiceNodePortRange     *utilnet.PortRange
 	ServiceNodePortRangeStr  string
 	Skips                    map[string]bool
@@ -90,7 +91,7 @@ type Server struct {
 	SystemDefaultRegistry    string
 	TLSCipherSuites          []uint16
 	TLSMinVersion            uint16
-	TLSSan                   []string
+	TLSSan                   cli.StringSlice
 	TokenFile                string
 	Token                    string
 

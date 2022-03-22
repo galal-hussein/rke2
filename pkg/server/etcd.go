@@ -17,12 +17,12 @@ import (
 // sets special annotaitons on the node object which are etcd node id and etcd node
 // address, the function will also remove the controlplane and master role labels if
 // they exist on the node
-func setETCDLabelsAndAnnotations(ctx context.Context, config *config.Server) error {
+func setETCDLabelsAndAnnotations(ctx context.Context, serverConfig *config.Server) error {
 	t := time.NewTicker(5 * time.Second)
 	defer t.Stop()
 	for range t.C {
 
-		sc, err := NewContext(ctx, config.Runtime.KubeConfigAdmin)
+		sc, err := config.NewContext(ctx, serverConfig.Runtime.KubeConfigAdmin)
 		if err != nil {
 			logrus.Infof("Failed to set etcd role label: %v", err)
 			continue
@@ -33,7 +33,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *config.Server) err
 			continue
 		}
 
-		config.Runtime.Core = sc.Core
+		serverConfig.Runtime.Core = sc.Core
 		nodes := sc.Core.Core().V1().Node()
 
 		nodeName := os.Getenv("NODE_NAME")
@@ -72,7 +72,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *config.Server) err
 		if node.Annotations == nil {
 			node.Annotations = map[string]string{}
 		}
-		fileName := filepath.Join(config.DataDir, "db", "etcd", "name")
+		fileName := filepath.Join(serverConfig.DataDir, "db", "etcd", "name")
 
 		data, err := ioutil.ReadFile(fileName)
 		if err != nil {
@@ -82,7 +82,7 @@ func setETCDLabelsAndAnnotations(ctx context.Context, config *config.Server) err
 		etcdNodeName := string(data)
 		node.Annotations[etcd.NodeNameAnnotation] = etcdNodeName
 
-		address, err := etcd.GetAdvertiseAddress(config.PrivateIP)
+		address, err := etcd.GetAdvertiseAddress(serverConfig.PrivateIP)
 		if err != nil {
 			logrus.Infof("Waiting for etcd node address to be available: %v", err)
 			continue

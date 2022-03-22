@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/k3s-io/k3s/pkg/cli/cert"
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/urfave/cli"
 )
@@ -13,6 +12,7 @@ import (
 const CertCommand = "certificate"
 
 var (
+	ServicesList     cli.StringSlice
 	CertCommandFlags = []cli.Flag{
 		DebugFlag,
 		ConfigFlag,
@@ -21,13 +21,13 @@ var (
 		cli.StringFlag{
 			Name:        "data-dir,d",
 			Usage:       "(data) Folder to hold state default /var/lib/rancher/" + version.Program + " or ${HOME}/.rancher/" + version.Program + " if not root",
-			Destination: &cmds.ServerConfig.DataDir,
+			Destination: &ServerConfig.DataDir,
 			Value:       rke2Path,
 		},
 		cli.StringSliceFlag{
 			Name:  "service,s",
 			Usage: "List of services to rotate certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
-			Value: &cmds.ServicesList,
+			Value: &ServicesList,
 		},
 	}
 	certSubcommands = []cli.Command{

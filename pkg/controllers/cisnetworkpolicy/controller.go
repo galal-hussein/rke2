@@ -5,8 +5,8 @@ import (
 	"net"
 	"sort"
 
-	"github.com/k3s-io/k3s/pkg/server"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/config"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
@@ -22,7 +22,7 @@ const (
 	flannelHostNetworkPolicyName = "rke2-flannel-host-networking"
 )
 
-func Controller(ctx context.Context, sc *server.Context) error {
+func Controller(ctx context.Context, sc *config.Context) error {
 	return register(ctx, sc.Core.Core().V1().Node(), sc.K8s)
 }
 

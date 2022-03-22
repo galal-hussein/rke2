@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/k3s-io/k3s/pkg/cluster"
-	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/util"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"

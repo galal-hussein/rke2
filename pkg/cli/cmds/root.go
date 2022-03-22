@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/images"
-	"github.com/rancher/rke2/pkg/rke2"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -89,7 +88,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:   "profile",
-			Usage:  "(security) Validate system configuration against the selected benchmark (valid items: " + rke2.CISProfile15 + ", " + rke2.CISProfile16 + " )",
+			Usage:  "(security) Validate system configuration against the selected benchmark (valid items: " + config.CISProfile15 + ", " + config.CISProfile16 + " )",
 			EnvVar: "RKE2_CIS_PROFILE",
 		},
 		&cli.StringFlag{
@@ -111,75 +110,75 @@ var (
 			Destination: &RootConfig.ControlPlaneResourceLimits,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeAPIServer + "-extra-mount",
-			Usage:  "(components) " + rke2.KubeAPIServer + " extra volume mounts",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeAPIServer, "-", "_")) + "_EXTRA_MOUNT",
+			Name:   config.KubeAPIServer + "-extra-mount",
+			Usage:  "(components) " + config.KubeAPIServer + " extra volume mounts",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeAPIServer, "-", "_")) + "_EXTRA_MOUNT",
 			Value:  &RootConfig.ExtraMounts.KubeAPIServer,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeScheduler + "-extra-mount",
-			Usage:  "(components) " + rke2.KubeScheduler + " extra volume mounts",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeScheduler, "-", "_")) + "_EXTRA_MOUNT",
+			Name:   config.KubeScheduler + "-extra-mount",
+			Usage:  "(components) " + config.KubeScheduler + " extra volume mounts",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeScheduler, "-", "_")) + "_EXTRA_MOUNT",
 			Value:  &RootConfig.ExtraMounts.KubeScheduler,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeControllerManager + "-extra-mount",
-			Usage:  "(components) " + rke2.KubeControllerManager + " extra volume mounts",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeControllerManager, "-", "_")) + "_EXTRA_MOUNT",
+			Name:   config.KubeControllerManager + "-extra-mount",
+			Usage:  "(components) " + config.KubeControllerManager + " extra volume mounts",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeControllerManager, "-", "_")) + "_EXTRA_MOUNT",
 			Value:  &RootConfig.ExtraMounts.KubeControllerManager,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeProxy + "-extra-mount",
-			Usage:  "(components) " + rke2.KubeProxy + " extra volume mounts",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeProxy, "-", "_")) + "_EXTRA_MOUNT",
+			Name:   config.KubeProxy + "-extra-mount",
+			Usage:  "(components) " + config.KubeProxy + " extra volume mounts",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeProxy, "-", "_")) + "_EXTRA_MOUNT",
 			Value:  &RootConfig.ExtraMounts.KubeProxy,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.Etcd + "-extra-mount",
-			Usage:  "(components) " + rke2.Etcd + " extra volume mounts",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.Etcd, "-", "_")) + "_EXTRA_MOUNT",
+			Name:   config.Etcd + "-extra-mount",
+			Usage:  "(components) " + config.Etcd + " extra volume mounts",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.Etcd, "-", "_")) + "_EXTRA_MOUNT",
 			Value:  &RootConfig.ExtraMounts.Etcd,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.CloudControllerManager + "-extra-mount",
-			Usage:  "(components) " + rke2.CloudControllerManager + " extra volume mounts",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.CloudControllerManager, "-", "_")) + "_EXTRA_MOUNT",
+			Name:   config.CloudControllerManager + "-extra-mount",
+			Usage:  "(components) " + config.CloudControllerManager + " extra volume mounts",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.CloudControllerManager, "-", "_")) + "_EXTRA_MOUNT",
 			Value:  &RootConfig.ExtraMounts.CloudControllerManager,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeAPIServer + "-extra-env",
-			Usage:  "(components) " + rke2.KubeAPIServer + " extra environment variables",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeAPIServer, "-", "_")) + "_EXTRA_ENV",
+			Name:   config.KubeAPIServer + "-extra-env",
+			Usage:  "(components) " + config.KubeAPIServer + " extra environment variables",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeAPIServer, "-", "_")) + "_EXTRA_ENV",
 			Value:  &RootConfig.ExtraEnv.KubeAPIServer,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeScheduler + "-extra-env",
-			Usage:  "(components) " + rke2.KubeScheduler + " extra environment variables",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeScheduler, "-", "_")) + "_EXTRA_ENV",
+			Name:   config.KubeScheduler + "-extra-env",
+			Usage:  "(components) " + config.KubeScheduler + " extra environment variables",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeScheduler, "-", "_")) + "_EXTRA_ENV",
 			Value:  &RootConfig.ExtraEnv.KubeScheduler,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeControllerManager + "-extra-env",
-			Usage:  "(components) " + rke2.KubeControllerManager + " extra environment variables",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeControllerManager, "-", "_")) + "_EXTRA_ENV",
+			Name:   config.KubeControllerManager + "-extra-env",
+			Usage:  "(components) " + config.KubeControllerManager + " extra environment variables",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeControllerManager, "-", "_")) + "_EXTRA_ENV",
 			Value:  &RootConfig.ExtraEnv.KubeControllerManager,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.KubeProxy + "-extra-env",
-			Usage:  "(components) " + rke2.KubeProxy + " extra environment variables",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.KubeProxy, "-", "_")) + "_EXTRA_ENV",
+			Name:   config.KubeProxy + "-extra-env",
+			Usage:  "(components) " + config.KubeProxy + " extra environment variables",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.KubeProxy, "-", "_")) + "_EXTRA_ENV",
 			Value:  &RootConfig.ExtraEnv.KubeProxy,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.Etcd + "-extra-env",
-			Usage:  "(components) " + rke2.Etcd + " extra environment variables",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.Etcd, "-", "_")) + "_EXTRA_ENV",
+			Name:   config.Etcd + "-extra-env",
+			Usage:  "(components) " + config.Etcd + " extra environment variables",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.Etcd, "-", "_")) + "_EXTRA_ENV",
 			Value:  &RootConfig.ExtraEnv.Etcd,
 		},
 		&cli.StringSliceFlag{
-			Name:   rke2.CloudControllerManager + "-extra-env",
-			Usage:  "(components) " + rke2.CloudControllerManager + " extra environment variables",
-			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(rke2.CloudControllerManager, "-", "_")) + "_EXTRA_ENV",
+			Name:   config.CloudControllerManager + "-extra-env",
+			Usage:  "(components) " + config.CloudControllerManager + " extra environment variables",
+			EnvVar: "RKE2_" + strings.ToUpper(strings.ReplaceAll(config.CloudControllerManager, "-", "_")) + "_EXTRA_ENV",
 			Value:  &RootConfig.ExtraEnv.CloudControllerManager,
 		},
 	}
@@ -192,7 +191,9 @@ const (
 type CLIRole int64
 
 const (
-	AgentRole CLIRole = iota
+	DefaultPauseImage          = "rancher/mirrored-pause:3.6"
+	DefaultSnapshotter         = "overlayfs"
+	AgentRole          CLIRole = iota
 	ServerRole
 )
 
@@ -288,7 +289,7 @@ func setCISFlags(clx *cli.Context) error {
 
 func validateProfile(clx *cli.Context, role CLIRole) {
 	switch clx.String("profile") {
-	case rke2.CISProfile15, rke2.CISProfile16:
+	case config.CISProfile15, config.CISProfile16:
 		if err := validateCISReqs(role); err != nil {
 			logrus.Fatal(err)
 		}

@@ -4,6 +4,12 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/urfave/cli"
+)
+
+const (
+	DefaultPodManifestPath = "pod-manifests"
 )
 
 type Agent struct {
@@ -11,15 +17,15 @@ type Agent struct {
 	TokenFile                string
 	ClusterSecret            string
 	ServerURL                string
-	APIAddressCh             chan string
+	APIAddressCh             chan []string
 	DisableLoadBalancer      bool
 	DisableServiceLB         bool
 	ETCDAgent                bool
 	LBServerPort             int
 	ResolvConf               string
 	DataDir                  string
-	NodeIP                   []string
-	NodeExternalIP           []string
+	NodeIP                   cli.StringSlice
+	NodeExternalIP           cli.StringSlice
 	NodeName                 string
 	PauseImage               string
 	Snapshotter              string
@@ -35,11 +41,11 @@ type Agent struct {
 	ClusterReset             bool
 	PrivateRegistry          string
 	SystemDefaultRegistry    string
-	AirgapExtraRegistry      []string
-	ExtraKubeletArgs         []string
-	ExtraKubeProxyArgs       []string
-	Labels                   []string
-	Taints                   []string
+	AirgapExtraRegistry      cli.StringSlice
+	ExtraKubeletArgs         cli.StringSlice
+	ExtraKubeProxyArgs       cli.StringSlice
+	Labels                   cli.StringSlice
+	Taints                   cli.StringSlice
 	ImageCredProvBinDir      string
 	ImageCredProvConfig      string
 	AgentReady               chan<- struct{}
