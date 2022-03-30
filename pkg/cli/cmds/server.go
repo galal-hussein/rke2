@@ -17,15 +17,12 @@ const (
 )
 
 var (
-	DisableItems = []string{"rke2-coredns", "rke2-ingress-nginx", "rke2-metrics-server"}
-	CNIItems     = []string{"calico", "canal", "cilium"}
-
 	ServerConfig = config.Server{}
 
 	serverFlag = []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:   "cni",
-			Usage:  "(networking) CNI Plugins to deploy, one of none, " + strings.Join(CNIItems, ", ") + "; optionally with multus as the first value to enable the multus meta-plugin (default: canal)",
+			Usage:  "(networking) CNI Plugins to deploy, one of none, " + strings.Join(config.CNIItems, ", ") + "; optionally with multus as the first value to enable the multus meta-plugin (default: canal)",
 			EnvVar: "RKE2_CNI",
 		},
 	}
@@ -253,7 +250,7 @@ var ServerFlags = []cli.Flag{
 	},
 	cli.StringSliceFlag{
 		Name:  "disable",
-		Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: " + strings.Join(DisableItems, ", ") + ")",
+		Usage: "(components) Do not deploy packaged components and delete any deployed components (valid items: " + strings.Join(config.DisableItems, ", ") + ")",
 	},
 	cli.BoolFlag{
 		Name:        "disable-scheduler",
@@ -395,8 +392,8 @@ func validateCNI(clx *cli.Context) {
 	switch {
 	case cnis[0] == "none":
 		fallthrough
-	case slice.ContainsString(CNIItems, cnis[0]):
-		for _, d := range CNIItems {
+	case slice.ContainsString(config.CNIItems, cnis[0]):
+		for _, d := range config.CNIItems {
 			if cnis[0] != d {
 				clx.Set("disable", "rke2-"+d)
 				clx.Set("disable", "rke2-"+d+"-crd")

@@ -1,4 +1,4 @@
-package configfilearg
+package defaultparser
 
 import (
 	"reflect"

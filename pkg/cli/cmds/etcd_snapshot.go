@@ -3,7 +3,6 @@ package cmds
 import (
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/urfave/cli"
 )
@@ -21,83 +20,83 @@ var EtcdSnapshotFlags = []cli.Flag{
 		Name:        "node-name",
 		Usage:       "(agent/node) Node name",
 		EnvVar:      version.ProgramUpper + "_NODE_NAME",
-		Destination: &cmds.AgentConfig.NodeName,
+		Destination: &AgentConfig.NodeName,
 	},
 	DataDirFlag,
 	&cli.StringFlag{
 		Name:        "dir,etcd-snapshot-dir",
 		Usage:       "(db) Directory to save etcd on-demand snapshot. (default: ${data-dir}/db/snapshots)",
-		Destination: &cmds.ServerConfig.EtcdSnapshotDir,
+		Destination: &ServerConfig.EtcdSnapshotDir,
 	},
 	&cli.StringFlag{
 		Name:        "name",
 		Usage:       "(db) Set the base name of the etcd on-demand snapshot (appended with UNIX timestamp).",
-		Destination: &cmds.ServerConfig.EtcdSnapshotName,
+		Destination: &ServerConfig.EtcdSnapshotName,
 		Value:       "on-demand",
 	},
 	&cli.BoolFlag{
 		Name:        "snapshot-compress,etcd-snapshot-compress",
 		Usage:       "(db) Compress etcd snapshot",
-		Destination: &cmds.ServerConfig.EtcdSnapshotCompress,
+		Destination: &ServerConfig.EtcdSnapshotCompress,
 	},
 	&cli.BoolFlag{
 		Name:        "s3,etcd-s3",
 		Usage:       "(db) Enable backup to S3",
-		Destination: &cmds.ServerConfig.EtcdS3,
+		Destination: &ServerConfig.EtcdS3,
 	},
 	&cli.StringFlag{
 		Name:        "s3-endpoint,etcd-s3-endpoint",
 		Usage:       "(db) S3 endpoint url",
-		Destination: &cmds.ServerConfig.EtcdS3Endpoint,
+		Destination: &ServerConfig.EtcdS3Endpoint,
 		Value:       "s3.amazonaws.com",
 	},
 	&cli.StringFlag{
 		Name:        "s3-endpoint-ca,etcd-s3-endpoint-ca",
 		Usage:       "(db) S3 custom CA cert to connect to S3 endpoint",
-		Destination: &cmds.ServerConfig.EtcdS3EndpointCA,
+		Destination: &ServerConfig.EtcdS3EndpointCA,
 	},
 	&cli.BoolFlag{
 		Name:        "s3-skip-ssl-verify,etcd-s3-skip-ssl-verify",
 		Usage:       "(db) Disables S3 SSL certificate validation",
-		Destination: &cmds.ServerConfig.EtcdS3SkipSSLVerify,
+		Destination: &ServerConfig.EtcdS3SkipSSLVerify,
 	},
 	&cli.StringFlag{
 		Name:        "s3-access-key,etcd-s3-access-key",
 		Usage:       "(db) S3 access key",
 		EnvVar:      "AWS_ACCESS_KEY_ID",
-		Destination: &cmds.ServerConfig.EtcdS3AccessKey,
+		Destination: &ServerConfig.EtcdS3AccessKey,
 	},
 	&cli.StringFlag{
 		Name:        "s3-secret-key,etcd-s3-secret-key",
 		Usage:       "(db) S3 secret key",
 		EnvVar:      "AWS_SECRET_ACCESS_KEY",
-		Destination: &cmds.ServerConfig.EtcdS3SecretKey,
+		Destination: &ServerConfig.EtcdS3SecretKey,
 	},
 	&cli.StringFlag{
 		Name:        "s3-bucket,etcd-s3-bucket",
 		Usage:       "(db) S3 bucket name",
-		Destination: &cmds.ServerConfig.EtcdS3BucketName,
+		Destination: &ServerConfig.EtcdS3BucketName,
 	},
 	&cli.StringFlag{
 		Name:        "s3-region,etcd-s3-region",
 		Usage:       "(db) S3 region / bucket location (optional)",
-		Destination: &cmds.ServerConfig.EtcdS3Region,
+		Destination: &ServerConfig.EtcdS3Region,
 		Value:       "us-east-1",
 	},
 	&cli.StringFlag{
 		Name:        "s3-folder,etcd-s3-folder",
 		Usage:       "(db) S3 folder",
-		Destination: &cmds.ServerConfig.EtcdS3Folder,
+		Destination: &ServerConfig.EtcdS3Folder,
 	},
 	&cli.BoolFlag{
 		Name:        "s3-insecure,etcd-s3-insecure",
 		Usage:       "(db) Disables S3 over HTTPS",
-		Destination: &cmds.ServerConfig.EtcdS3Insecure,
+		Destination: &ServerConfig.EtcdS3Insecure,
 	},
 	&cli.DurationFlag{
 		Name:        "s3-timeout,etcd-s3-timeout",
 		Usage:       "(db) S3 timeout",
-		Destination: &cmds.ServerConfig.EtcdS3Timeout,
+		Destination: &ServerConfig.EtcdS3Timeout,
 		Value:       30 * time.Second,
 	},
 }
@@ -143,7 +142,7 @@ func NewEtcdSnapshotSubcommands(delete, list, prune, save func(ctx *cli.Context)
 			Flags: append(EtcdSnapshotFlags, &cli.IntFlag{
 				Name:        "snapshot-retention",
 				Usage:       "(db) Number of snapshots to retain.",
-				Destination: &cmds.ServerConfig.EtcdSnapshotRetention,
+				Destination: &ServerConfig.EtcdSnapshotRetention,
 				Value:       defaultSnapshotRentention,
 			}),
 		},

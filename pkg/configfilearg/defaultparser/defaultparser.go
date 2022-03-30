@@ -1,13 +1,14 @@
-package configfilearg
+package defaultparser
 
 import (
 	"github.com/rancher/rke2/pkg/cli/cmds"
+	"github.com/rancher/rke2/pkg/configfilearg"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
-var DefaultParser = &Parser{
+var DefaultParser = &configfilearg.Parser{
 	After:         []string{"server", "agent", "etcd-snapshot:1"},
 	FlagNames:     []string{"--config", "-c"},
 	EnvName:       version.ProgramUpper + "_CONFIG_FILE",
@@ -24,7 +25,7 @@ func MustParse(args []string) []string {
 }
 
 func MustFindString(args []string, target string) string {
-	parser := &Parser{
+	parser := &configfilearg.Parser{
 		After:         []string{},
 		FlagNames:     []string{},
 		EnvName:       version.ProgramUpper + "_CONFIG_FILE",

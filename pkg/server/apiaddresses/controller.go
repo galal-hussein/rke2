@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/etcd"
 	"github.com/rancher/rke2/pkg/util"
 	"github.com/rancher/rke2/pkg/version"
 	controllerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"

@@ -3,10 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/k3s-io/k3s/pkg/cli/cert"
-	"github.com/k3s-io/k3s/pkg/cli/etcdsnapshot"
-	"github.com/k3s-io/k3s/pkg/configfilearg"
+	"github.com/rancher/rke2/pkg/cli/cert"
 	"github.com/rancher/rke2/pkg/cli/cmds"
+	"github.com/rancher/rke2/pkg/cli/etcdsnapshot"
+	"github.com/rancher/rke2/pkg/configfilearg"
+	"github.com/rancher/rke2/pkg/configfilearg/defaultparser"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -14,7 +15,7 @@ import (
 func main() {
 	serverCmd := cmds.NewServerCommand(cmds.ServerRun)
 	agentCmd := cmds.NewAgentCommand(cmds.AgentRun)
-	etcdSnapshotCmd := cmds.NewEtcdSnapshotCommand(cmds.EtcdSnapshotRun,
+	etcdSnapshotCmd := cmds.NewEtcdSnapshotCommand(etcdsnapshot.Run,
 		cmds.NewEtcdSnapshotSubcommands(
 			etcdsnapshot.Delete,
 			etcdsnapshot.List,
@@ -37,13 +38,13 @@ func main() {
 		secretEncryptCmd,
 	}
 
-	if err := app.Run(configfilearg.MustParse(os.Args)); err != nil {
+	if err := app.Run(configfilearg.MustParse(os.Args, defaultparser.DefaultParser)); err != nil {
 		logrus.Fatal(err)
 	}
 }
 
 func addDefaultParser(cmds ...cli.Command) {
 	for _, cmd := range cmds {
-		configfilearg.DefaultParser.ValidFlags[cmd.Name] = cmd.Flags
+		defaultparser.DefaultParser.ValidFlags[cmd.Name] = cmd.Flags
 	}
 }

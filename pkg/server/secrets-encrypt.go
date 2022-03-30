@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/cluster"
+	"github.com/rancher/rke2/pkg/cluster"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/server/secretsencrypt"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"

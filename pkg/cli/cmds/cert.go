@@ -4,7 +4,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/k3s-io/k3s/pkg/cli/cert"
+	"github.com/rancher/rke2/pkg/cli/cert"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/urfave/cli"
 )
@@ -12,7 +13,6 @@ import (
 const CertCommand = "certificate"
 
 var (
-	ServicesList     cli.StringSlice
 	CertCommandFlags = []cli.Flag{
 		DebugFlag,
 		ConfigFlag,
@@ -27,7 +27,7 @@ var (
 		cli.StringSliceFlag{
 			Name:  "service,s",
 			Usage: "List of services to rotate certificates for. Options include (admin, api-server, controller-manager, scheduler, " + version.Program + "-controller, " + version.Program + "-server, cloud-controller, etcd, auth-proxy, kubelet, kube-proxy)",
-			Value: &ServicesList,
+			Value: &config.ServicesList,
 		},
 	}
 	certSubcommands = []cli.Command{

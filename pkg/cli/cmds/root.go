@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
 	"github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/images"
@@ -313,7 +312,7 @@ func validateCloudProviderName(role CLIRole) {
 		if providerName == RootConfig.CloudProviderName {
 			RootConfig.CloudProviderName = "external"
 			if role == ServerRole {
-				cmds.ServerConfig.DisableCCM = true
+				ServerConfig.DisableCCM = true
 			}
 		} else {
 			if role == ServerRole {

@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/cluster/managed"
-	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/cli/defaults"
+	"github.com/rancher/rke2/pkg/cluster/managed"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/etcd"
 	"github.com/rancher/rke2/pkg/images"
 	"github.com/rancher/rke2/pkg/podexecutor"
 	"github.com/sirupsen/logrus"

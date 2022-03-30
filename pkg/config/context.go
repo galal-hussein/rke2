@@ -7,9 +7,9 @@ import (
 	"runtime"
 
 	"github.com/k3s-io/helm-controller/pkg/generated/controllers/helm.cattle.io"
-	"github.com/k3s-io/k3s/pkg/deploy"
-	"github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/deploy"
+	"github.com/rancher/rke2/pkg/generated/controllers/k3s.cattle.io"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/crd"

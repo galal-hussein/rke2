@@ -7,10 +7,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/k3s-io/kine/pkg/endpoint"
 	"github.com/rancher/wrangler/pkg/generated/controllers/core"
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+)
+
+var (
+	DisableItems = []string{"rke2-coredns", "rke2-ingress-nginx", "rke2-metrics-server"}
+	CNIItems     = []string{"calico", "canal", "cilium"}
 )
 
 type Server struct {
@@ -30,7 +36,7 @@ type Server struct {
 	DataDir                  string
 	DatastoreCAFile          string
 	DatastoreCertFile        string
-	Datastore                EndpointConfig
+	Datastore                endpoint.Config
 	DatastoreEndpoint        string
 	DatastoreKeyFile         string
 	DefaultLocalStoragePath  string
@@ -189,7 +195,7 @@ type ControlRuntime struct {
 	ClientETCDKey            string
 
 	Core       *core.Factory
-	EtcdConfig ETCDConfig
+	EtcdConfig endpoint.ETCDConfig
 }
 
 type StartupHookArgs struct {

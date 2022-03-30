@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
-
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/networking/v1"
@@ -174,8 +173,8 @@ func setNetworkDNSPolicy(ctx context.Context, cs *kubernetes.Clientset) error {
 }
 
 // setNetworkPolicies applies a default network policy across the 3 primary namespaces.
-func setNetworkPolicies(cisMode bool, namespaces []string) cmds.StartupHook {
-	return func(ctx context.Context, wg *sync.WaitGroup, args cmds.StartupHookArgs) error {
+func setNetworkPolicies(cisMode bool, namespaces []string) config.StartupHook {
+	return func(ctx context.Context, wg *sync.WaitGroup, args config.StartupHookArgs) error {
 		// check if we're running in CIS mode and if so,
 		// apply the network policy.
 		if !cisMode {

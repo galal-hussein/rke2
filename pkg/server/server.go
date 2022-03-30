@@ -11,14 +11,15 @@ import (
 
 	systemd "github.com/coreos/go-systemd/daemon"
 	"github.com/erikdubbelboer/gspt"
-	"github.com/k3s-io/k3s/pkg/agent"
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/etcd"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/agent"
 	"github.com/rancher/rke2/pkg/agent/loadbalancer"
+	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/clientaccess"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/datadir"
+	"github.com/rancher/rke2/pkg/etcd"
+	"github.com/rancher/rke2/pkg/log"
 	"github.com/rancher/rke2/pkg/token"
 	"github.com/rancher/rke2/pkg/util"
 	"github.com/rancher/rke2/pkg/version"
@@ -47,7 +48,7 @@ func (s *Server) Run(app *cli.Context) error {
 
 	// Initialize logging, and subprocess reaping if necessary.
 	// Log output redirection and subprocess reaping both require forking.
-	if err := cmds.InitLogging(); err != nil {
+	if err := log.InitLogging(); err != nil {
 		return err
 	}
 
@@ -443,7 +444,7 @@ func (s *Server) getAPIAddressFromEtcd(ctx context.Context) {
 	for {
 		toCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(toCtx, &ServerConfig)
+		serverAddresses, err := etcd.GetAPIServerURLsFromETCD(toCtx, s.ServerConfig)
 		if err == nil && len(serverAddresses) > 0 {
 			s.AgentConfig.APIAddressCh <- serverAddresses
 			break

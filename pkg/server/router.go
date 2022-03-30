@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/k3s-io/k3s/pkg/nodepassword"
 	"github.com/pkg/errors"
 	certutil "github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/nodepassword"
 	"github.com/rancher/rke2/pkg/server/bootstrap"
 	"github.com/rancher/rke2/pkg/version"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"

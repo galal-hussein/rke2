@@ -9,15 +9,16 @@ import (
 	"strings"
 	"time"
 
-	containerdk3s "github.com/k3s-io/k3s/pkg/agent/containerd"
-	"github.com/k3s-io/k3s/pkg/cli/agent"
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/daemons/executor"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/agent"
+	containerdk3s "github.com/rancher/rke2/pkg/agent/containerd"
+	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/config"
+	daemonconfig "github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/controllers/cisnetworkpolicy"
+	"github.com/rancher/rke2/pkg/daemons/executor"
 	"github.com/rancher/rke2/pkg/server"
+	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,7 +81,7 @@ func (r *RKE2) Server(clx *cli.Context) error {
 		metav1.NamespacePublic,
 	}
 	dataDir := clx.String("data-dir")
-	cmds.ServerConfig.StartupHooks = append(cmds.ServerConfig.StartupHooks,
+	r.serverConfig.StartupHooks = append(r.serverConfig.StartupHooks,
 		setPSPs(cisMode),
 		setNetworkPolicies(cisMode, defaultNamespaces),
 		setClusterRoles(),
@@ -106,7 +107,11 @@ func (r *RKE2) Agent(clx *cli.Context) error {
 	if err := r.setup(clx, r.agentConfig.DataDir); err != nil {
 		return err
 	}
-	return agent.Run(clx)
+	newAgent := agent.Agent{
+		AgentConfig: r.agentConfig,
+	}
+	ctx := signals.SetupSignalContext()
+	return newAgent.Run(ctx)
 }
 
 func (r *RKE2) setup(clx *cli.Context, dataDir string) error {

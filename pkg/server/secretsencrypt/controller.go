@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/cluster"
+	"github.com/rancher/rke2/pkg/cluster"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/util"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"

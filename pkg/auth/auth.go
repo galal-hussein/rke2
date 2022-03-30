@@ -3,8 +3,8 @@ package auth
 import (
 	"strings"
 
-	"github.com/k3s-io/k3s/pkg/authenticator/basicauth"
-	"github.com/k3s-io/k3s/pkg/authenticator/passwordfile"
+	"github.com/rancher/rke2/pkg/authenticator/basicauth"
+	"github.com/rancher/rke2/pkg/authenticator/passwordfile"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/group"
 	"k8s.io/apiserver/pkg/authentication/request/union"

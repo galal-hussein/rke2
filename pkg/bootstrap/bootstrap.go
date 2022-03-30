@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
+
+	encodingjson "encoding/json"
 
 	"github.com/containerd/continuity/fs"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -19,12 +23,12 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	helmv1 "github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1"
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/daemons/agent"
-	daemonconfig "github.com/k3s-io/k3s/pkg/daemons/config"
-	"github.com/k3s-io/k3s/pkg/util"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/config"
+	daemonconfig "github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/daemons/agent"
 	"github.com/rancher/rke2/pkg/images"
+	"github.com/rancher/rke2/pkg/util"
 	"github.com/rancher/wharfie/pkg/credentialprovider/plugin"
 	"github.com/rancher/wharfie/pkg/extract"
 	"github.com/rancher/wharfie/pkg/registries"
@@ -81,7 +85,7 @@ func dirExists(dir string) bool {
 // Unique image detection is accomplished by hashing the image name and tag, or the image digest,
 // depending on what the runtime image reference points at.
 // If the bin directory already exists, or content is successfully extracted, the bin directory path is returned.
-func Stage(resolver *images.Resolver, nodeConfig *daemonconfig.Node, cfg cmds.Agent) (string, error) {
+func Stage(resolver *images.Resolver, nodeConfig *daemonconfig.Node, dataDir string) (string, error) {
 	var img v1.Image
 
 	ref, err := resolver.GetReference(images.Runtime)
@@ -94,9 +98,9 @@ func Stage(resolver *images.Resolver, nodeConfig *daemonconfig.Node, cfg cmds.Ag
 		return "", err
 	}
 
-	refBinDir := binDirForDigest(cfg.DataDir, refDigest)
-	refChartsDir := chartsDirForDigest(cfg.DataDir, refDigest)
-	imagesDir := imagesDir(cfg.DataDir)
+	refBinDir := binDirForDigest(dataDir, refDigest)
+	refChartsDir := chartsDirForDigest(dataDir, refDigest)
+	imagesDir := imagesDir(dataDir)
 
 	if dirExists(refBinDir) && dirExists(refChartsDir) {
 		logrus.Infof("Runtime image %s bin and charts directories already exist; skipping extract", ref.Name())
@@ -148,15 +152,15 @@ func Stage(resolver *images.Resolver, nodeConfig *daemonconfig.Node, cfg cmds.Ag
 	}
 
 	// ignore errors on symlink rewrite
-	_ = os.RemoveAll(symlinkBinDir(cfg.DataDir))
-	_ = os.Symlink(refBinDir, symlinkBinDir(cfg.DataDir))
+	_ = os.RemoveAll(symlinkBinDir(dataDir))
+	_ = os.Symlink(refBinDir, symlinkBinDir(dataDir))
 
 	return refBinDir, nil
 }
 
 // UpdateManifests copies the staged manifests into the server's manifests dir, and applies
 // cluster configuration values to any HelmChart manifests found in the manifests directory.
-func UpdateManifests(resolver *images.Resolver, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+func UpdateManifests(resolver *images.Resolver, nodeConfig *daemonconfig.Node, dataDir string) error {
 	ref, err := resolver.GetReference(images.Runtime)
 	if err != nil {
 		return err
@@ -167,8 +171,8 @@ func UpdateManifests(resolver *images.Resolver, nodeConfig *daemonconfig.Node, c
 		return err
 	}
 
-	refChartsDir := chartsDirForDigest(cfg.DataDir, refDigest)
-	manifestsDir := manifestsDir(cfg.DataDir)
+	refChartsDir := chartsDirForDigest(dataDir, refDigest)
+	manifestsDir := manifestsDir(dataDir)
 
 	// Ensure manifests directory exists
 	if err := os.MkdirAll(manifestsDir, 0755); err != nil && !os.IsExist(err) {
@@ -188,7 +192,7 @@ func UpdateManifests(resolver *images.Resolver, nodeConfig *daemonconfig.Node, c
 
 	// Fix up HelmCharts to pass through configured values.
 	// This needs to be done every time in order to sync values from the CLI
-	if err := setChartValues(manifestsDir, nodeConfig, cfg); err != nil {
+	if err := setChartValues(manifestsDir, nodeConfig, dataDir); err != nil {
 		return errors.Wrap(err, "failed to rewrite HelmChart manifests to pass through CLI values")
 	}
 	return nil
@@ -252,7 +256,7 @@ func preloadBootstrapFromRuntime(imagesDir string, resolver *images.Resolver) (v
 // pass through settings to both the Helm job and the chart values.
 // NOTE: This will probably fail if any manifest contains multiple documents. This should
 // not matter for any of our packaged components, but may prevent this from working on user manifests.
-func setChartValues(manifestsDir string, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+func setChartValues(manifestsDir string, nodeConfig *daemonconfig.Node, dataDir string) error {
 	serializer := json.NewSerializerWithOptions(json.DefaultMetaFactory, schemes.All, schemes.All, json.SerializerOptions{Yaml: true, Pretty: true, Strict: true})
 	chartValues := map[string]string{
 		"global.clusterCIDR":           util.JoinIPNets(nodeConfig.AgentConfig.ClusterCIDRs),
@@ -260,7 +264,7 @@ func setChartValues(manifestsDir string, nodeConfig *daemonconfig.Node, cfg cmds
 		"global.clusterCIDRv6":         util.JoinIP6Nets(nodeConfig.AgentConfig.ClusterCIDRs),
 		"global.clusterDNS":            util.JoinIPs(nodeConfig.AgentConfig.ClusterDNSs),
 		"global.clusterDomain":         nodeConfig.AgentConfig.ClusterDomain,
-		"global.rke2DataDir":           cfg.DataDir,
+		"global.rke2DataDir":           dataDir,
 		"global.serviceCIDR":           util.JoinIPNets(nodeConfig.AgentConfig.ServiceCIDRs),
 		"global.systemDefaultRegistry": nodeConfig.AgentConfig.SystemDefaultRegistry,
 	}
@@ -359,4 +363,92 @@ func rewriteChart(fileName string, info os.FileInfo, chartValues map[string]stri
 
 	logrus.Infof("Updated HelmChart %s to set cluster configuration values", fileName)
 	return nil
+}
+
+func Handler(bootstrap *config.ControlRuntimeBootstrap) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		ReadFromDisk(rw, bootstrap)
+	})
+}
+
+// ReadFromDisk reads the bootstrap data from the files on disk and
+// writes their content in JSON form to the given io.Writer.
+func ReadFromDisk(w io.Writer, bootstrap *config.ControlRuntimeBootstrap) error {
+	paths, err := ObjToMap(bootstrap)
+	if err != nil {
+		return nil
+	}
+
+	dataMap := make(map[string]File)
+	for pathKey, path := range paths {
+		if path == "" {
+			continue
+		}
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			logrus.Warnf("failed to read %s", path)
+			continue
+		}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+
+		dataMap[pathKey] = File{
+			Timestamp: info.ModTime(),
+			Content:   data,
+		}
+	}
+
+	return encodingjson.NewEncoder(w).Encode(dataMap)
+}
+
+// File is a representation of a certificate
+// or key file within the bootstrap context that contains
+// the contents of the file as well as a timestamp from
+// when the file was last modified.
+type File struct {
+	Timestamp time.Time
+	Content   []byte
+}
+
+type PathsDataformat map[string]File
+
+// WriteToDiskFromStorage writes the contents of the given reader to the paths
+// derived from within the ControlRuntimeBootstrap.
+func WriteToDiskFromStorage(files PathsDataformat, bootstrap *config.ControlRuntimeBootstrap) error {
+	paths, err := ObjToMap(bootstrap)
+	if err != nil {
+		return err
+	}
+
+	for pathKey, bsf := range files {
+		path, ok := paths[pathKey]
+		if !ok {
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			return errors.Wrapf(err, "failed to mkdir %s", filepath.Dir(path))
+		}
+		if err := os.WriteFile(path, bsf.Content, 0600); err != nil {
+			return errors.Wrapf(err, "failed to write to %s", path)
+		}
+		if err := os.Chtimes(path, bsf.Timestamp, bsf.Timestamp); err != nil {
+			return errors.Wrapf(err, "failed to update modified time on %s", path)
+		}
+	}
+
+	return nil
+}
+
+func ObjToMap(obj interface{}) (map[string]string, error) {
+	bytes, err := encodingjson.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	data := map[string]string{}
+	return data, encodingjson.Unmarshal(bytes, &data)
 }

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k3s-io/k3s/pkg/authenticator/hash"
 	"github.com/pkg/errors"
+	"github.com/rancher/rke2/pkg/authenticator/hash"
 	"github.com/rancher/rke2/pkg/passwd"
 	"github.com/rancher/rke2/pkg/version"
 	coreclient "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"

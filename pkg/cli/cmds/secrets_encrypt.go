@@ -1,93 +1,106 @@
 package cmds
 
 import (
-	"github.com/k3s-io/k3s/pkg/cli/cmds"
-	"github.com/k3s-io/k3s/pkg/cli/secretsencrypt"
+	"github.com/rancher/rke2/pkg/version"
 	"github.com/urfave/cli"
 )
 
-var secretsEncryptSubcommands = []cli.Command{
-	{
-		Name:            "status",
-		Usage:           "Print current status of secrets encryption",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          secretsencrypt.Status,
-		Flags:           cmds.EncryptFlags,
-	},
-	{
-		Name:            "enable",
-		Usage:           "Enable secrets encryption",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          secretsencrypt.Enable,
-		Flags:           cmds.EncryptFlags,
-	},
-	{
-		Name:            "disable",
-		Usage:           "Disable secrets encryption",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          secretsencrypt.Disable,
-		Flags:           cmds.EncryptFlags,
-	},
-	{
-		Name:            "prepare",
-		Usage:           "Prepare for encryption keys rotation",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          secretsencrypt.Prepare,
-		Flags: append(cmds.EncryptFlags, &cli.BoolFlag{
-			Name:        "f,force",
-			Usage:       "Force preparation.",
-			Destination: &cmds.ServerConfig.EncryptForce,
-		}),
-	},
-	{
-		Name:            "rotate",
-		Usage:           "Rotate secrets encryption keys",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          secretsencrypt.Rotate,
-		Flags: append(cmds.EncryptFlags, &cli.BoolFlag{
-			Name:        "f,force",
-			Usage:       "Force key rotation.",
-			Destination: &cmds.ServerConfig.EncryptForce,
-		}),
-	},
-	{
-		Name:            "reencrypt",
-		Usage:           "Reencrypt all data with new encryption key",
-		SkipFlagParsing: false,
-		SkipArgReorder:  true,
-		Action:          secretsencrypt.Reencrypt,
-		Flags: append(cmds.EncryptFlags,
-			&cli.BoolFlag{
-				Name:        "f, force",
-				Usage:       "Force secrets reencryption.",
-				Destination: &cmds.ServerConfig.EncryptForce,
-			},
-			&cli.BoolFlag{
-				Name:        "skip",
-				Usage:       "Skip removing old key",
-				Destination: &cmds.ServerConfig.EncryptSkip,
-			}),
+const SecretsEncryptCommand = "secrets-encrypt"
+
+var EncryptFlags = []cli.Flag{
+	DataDirFlag,
+	ServerToken,
+	cli.StringFlag{
+		Name:        "server, s",
+		Usage:       "(cluster) Server to connect to",
+		EnvVar:      version.ProgramUpper + "_URL",
+		Value:       "https://127.0.0.1:6443",
+		Destination: &ServerConfig.ServerURL,
 	},
 }
 
-func NewSecretsEncryptCommand() cli.Command {
-
-	var modifiedSubcommands []cli.Command
-	for _, subcommand := range secretsEncryptSubcommands {
-		modifiedSubcommands = append(modifiedSubcommands, mustCmdFromK3S(subcommand, map[string]*K3SFlagOption{
-			"data-dir": copy,
-			"token":    copy,
-			"server": {
-				Default: "https://127.0.0.1:9345",
-			},
-			"f":    ignore,
-			"skip": ignore,
-		}))
+func NewSecretsEncryptCommand(action func(*cli.Context) error, subcommands []cli.Command) cli.Command {
+	return cli.Command{
+		Name:            SecretsEncryptCommand,
+		Usage:           "Control secrets encryption and keys rotation",
+		SkipFlagParsing: false,
+		SkipArgReorder:  true,
+		Action:          action,
+		Subcommands:     subcommands,
 	}
-	return cmds.NewSecretsEncryptCommand(cli.ShowAppHelp, modifiedSubcommands)
+}
+
+func NewSecretsEncryptSubcommands(status, enable, disable, prepare, rotate, reencrypt func(ctx *cli.Context) error) []cli.Command {
+	return []cli.Command{
+		{
+			Name:            "status",
+			Usage:           "Print current status of secrets encryption",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          status,
+			Flags: append(EncryptFlags, &cli.StringFlag{
+				Name:        "output,o",
+				Usage:       "Status format. Default: text. Optional: json",
+				Destination: &ServerConfig.EncryptOutput,
+			}),
+		},
+		{
+			Name:            "enable",
+			Usage:           "Enable secrets encryption",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          enable,
+			Flags:           EncryptFlags,
+		},
+		{
+			Name:            "disable",
+			Usage:           "Disable secrets encryption",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          disable,
+			Flags:           EncryptFlags,
+		},
+		{
+			Name:            "prepare",
+			Usage:           "Prepare for encryption keys rotation",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          prepare,
+			Flags: append(EncryptFlags, &cli.BoolFlag{
+				Name:        "f,force",
+				Usage:       "Force preparation.",
+				Destination: &ServerConfig.EncryptForce,
+			}),
+		},
+		{
+			Name:            "rotate",
+			Usage:           "Rotate secrets encryption keys",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          rotate,
+			Flags: append(EncryptFlags, &cli.BoolFlag{
+				Name:        "f,force",
+				Usage:       "Force key rotation.",
+				Destination: &ServerConfig.EncryptForce,
+			}),
+		},
+		{
+			Name:            "reencrypt",
+			Usage:           "Reencrypt all data with new encryption key",
+			SkipFlagParsing: false,
+			SkipArgReorder:  true,
+			Action:          reencrypt,
+			Flags: append(EncryptFlags,
+				&cli.BoolFlag{
+					Name:        "f,force",
+					Usage:       "Force secrets reencryption.",
+					Destination: &ServerConfig.EncryptForce,
+				},
+				&cli.BoolFlag{
+					Name:        "skip",
+					Usage:       "Skip removing old key",
+					Destination: &ServerConfig.EncryptSkip,
+				}),
+		},
+	}
 }

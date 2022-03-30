@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"testing"
 
-	"github.com/k3s-io/k3s/pkg/daemons/config"
+	"github.com/rancher/rke2/pkg/config"
 )
 
 func TestObjToMap(t *testing.T) {
