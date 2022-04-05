@@ -21,7 +21,7 @@ var (
 )
 
 type Executor interface {
-	Bootstrap(ctx context.Context, nodeConfig *config.Node) error
+	Bootstrap(ctx context.Context, nodeConfig *config.Node, dataDir string) error
 	Kubelet(ctx context.Context, args []string) error
 	KubeProxy(ctx context.Context, args []string) error
 	APIServerHandlers(ctx context.Context) (authenticator.Request, http.Handler, error)
@@ -128,8 +128,8 @@ func Set(driver Executor) {
 	executor = driver
 }
 
-func Bootstrap(ctx context.Context, nodeConfig *config.Node) error {
-	return executor.Bootstrap(ctx, nodeConfig)
+func Bootstrap(ctx context.Context, nodeConfig *config.Node, dataDir string) error {
+	return executor.Bootstrap(ctx, nodeConfig, dataDir)
 }
 
 func Kubelet(ctx context.Context, args []string) error {

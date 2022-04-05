@@ -7,8 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rancher/rke2/pkg/cli/cmds"
-
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
@@ -156,8 +155,8 @@ func setSystemUnrestricted(ctx context.Context, cs *kubernetes.Clientset, ns *v1
 // - If the globalRestricted annotation does not exist, then check if the PSP exists and
 //   if it doesn't, create it. Check if the associated role and bindings exist and
 //   if they do, delete them.
-func setPSPs(cisMode bool) cmds.StartupHook {
-	return func(ctx context.Context, wg *sync.WaitGroup, args cmds.StartupHookArgs) error {
+func setPSPs(cisMode bool) config.StartupHook {
+	return func(ctx context.Context, wg *sync.WaitGroup, args config.StartupHookArgs) error {
 		go func() {
 			defer wg.Done()
 			<-args.APIServerReady

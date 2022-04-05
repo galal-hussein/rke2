@@ -165,7 +165,6 @@ func UpdateManifests(resolver *images.Resolver, nodeConfig *daemonconfig.Node, d
 	if err != nil {
 		return err
 	}
-
 	refDigest, err := releaseRefDigest(ref)
 	if err != nil {
 		return err

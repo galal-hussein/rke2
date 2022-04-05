@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Microsoft/hcsshim"
-	"github.com/rancher/rke2/pkg/daemons/config"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/net"

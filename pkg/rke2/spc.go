@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/rke2/pkg/cli/cmds"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +23,8 @@ import (
 // cleanupStaticPodsOnSelfDelete returns a StartupHook that will start a
 // goroutine to watch for deletion of the local node, and trigger static pod
 // cleanup when this occurs.
-func cleanupStaticPodsOnSelfDelete(dataDir string) cmds.StartupHook {
-	return func(ctx context.Context, wg *sync.WaitGroup, args cmds.StartupHookArgs) error {
+func cleanupStaticPodsOnSelfDelete(dataDir string) config.StartupHook {
+	return func(ctx context.Context, wg *sync.WaitGroup, args config.StartupHookArgs) error {
 		go func() {
 			defer wg.Done()
 			<-args.APIServerReady

@@ -4,13 +4,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/rancher/rke2/pkg/cli/cmds"
+	"github.com/rancher/rke2/pkg/config"
 )
 
 const kubeProxyChart = "rke2-kube-proxy"
 
-func setKubeProxyDisabled() cmds.StartupHook {
-	return func(ctx context.Context, wg *sync.WaitGroup, args cmds.StartupHookArgs) error {
+func setKubeProxyDisabled() config.StartupHook {
+	return func(ctx context.Context, wg *sync.WaitGroup, args config.StartupHookArgs) error {
 		go func() {
 			defer wg.Done()
 			<-args.APIServerReady

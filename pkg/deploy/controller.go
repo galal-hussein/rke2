@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
+	apisv1 "github.com/k3s-io/k3s/pkg/apis/k3s.cattle.io/v1"
+	controllersv1 "github.com/k3s-io/k3s/pkg/generated/controllers/k3s.cattle.io/v1"
 	errors2 "github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/agent/util"
-	apisv1 "github.com/rancher/rke2/pkg/apis/k3s.cattle.io/v1"
-	controllersv1 "github.com/rancher/rke2/pkg/generated/controllers/k3s.cattle.io/v1"
 	pkgutil "github.com/rancher/rke2/pkg/util"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/merr"

@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/agent"
 	"github.com/rancher/rke2/pkg/agent/loadbalancer"
-	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/clientaccess"
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/datadir"
@@ -55,6 +54,11 @@ func (s *Server) Run(app *cli.Context) error {
 	agentReady := make(chan struct{})
 
 	s.ServerConfig.Runtime = &config.ControlRuntime{AgentReady: agentReady}
+	// populate the etcd datastore endpoints
+	s.ServerConfig.Datastore.Endpoint = s.ServerConfig.DatastoreEndpoint
+	s.ServerConfig.Datastore.BackendTLSConfig.CAFile = s.ServerConfig.DatastoreCAFile
+	s.ServerConfig.Datastore.BackendTLSConfig.CertFile = s.ServerConfig.DatastoreCertFile
+	s.ServerConfig.Datastore.BackendTLSConfig.KeyFile = s.ServerConfig.DatastoreKeyFile
 
 	if s.ServerConfig.AgentTokenFile != "" {
 		s.ServerConfig.AgentToken, err = token.ReadFile(s.ServerConfig.AgentTokenFile)
@@ -320,6 +324,7 @@ func (s *Server) Run(app *cli.Context) error {
 
 	ctx := signals.SetupSignalContext()
 
+	logrus.Infof("agent default parser: %#v", s.AgentConfig.DefaultParser)
 	if err := s.StartServer(ctx); err != nil {
 		return err
 	}
@@ -354,38 +359,29 @@ func (s *Server) Run(app *cli.Context) error {
 		return err
 	}
 
-	agentConfig := cmds.AgentConfig
-	agentConfig.AgentReady = agentReady
-	agentConfig.Debug = app.GlobalBool("debug")
-	agentConfig.DataDir = filepath.Dir(s.ServerConfig.DataDir)
-	agentConfig.ServerURL = url
-	agentConfig.Token = token
-	agentConfig.DisableLoadBalancer = !s.ServerConfig.DisableAPIServer
-	agentConfig.DisableServiceLB = s.ServerConfig.DisableServiceLB
-	agentConfig.ETCDAgent = s.ServerConfig.DisableAPIServer
-	agentConfig.ClusterReset = s.ServerConfig.ClusterReset
-	agentConfig.Rootless = s.ServerConfig.Rootless
-
-	if agentConfig.Rootless {
-		// let agent specify Rootless kubelet flags, but not unshare twice
-		agentConfig.RootlessAlreadyUnshared = true
-	}
+	s.AgentConfig.AgentReady = agentReady
+	s.AgentConfig.Debug = app.GlobalBool("debug")
+	s.AgentConfig.DataDir = filepath.Dir(s.ServerConfig.DataDir)
+	s.AgentConfig.ServerURL = url
+	s.AgentConfig.Token = token
+	s.AgentConfig.DisableLoadBalancer = !s.ServerConfig.DisableAPIServer
+	s.AgentConfig.ETCDAgent = s.ServerConfig.DisableAPIServer
+	s.AgentConfig.ClusterReset = s.ServerConfig.ClusterReset
+	s.AgentConfig.Rootless = s.ServerConfig.Rootless
 
 	if s.ServerConfig.DisableAPIServer {
 		if s.ServerConfig.ServerURL != "" {
-			agentConfig.ServerURL = s.ServerConfig.ServerURL
+			s.AgentConfig.ServerURL = s.ServerConfig.ServerURL
 		}
 		// initialize the apiAddress Channel for receiving the api address from etcd
-		agentConfig.APIAddressCh = make(chan []string)
+		s.AgentConfig.APIAddressCh = make(chan []string)
 		go s.getAPIAddressFromEtcd(ctx)
 	}
 
-	if s.ServerConfig.DisableAgent {
-		agentConfig.ContainerRuntimeEndpoint = "/dev/null"
-		return agent.RunStandalone(ctx, agentConfig)
+	agent := agent.Agent{
+		AgentConfig: s.AgentConfig,
 	}
-
-	return agent.Run(ctx, agentConfig)
+	return agent.Agent(app)
 }
 
 // validateNetworkConfig ensures that the network configuration values make sense.

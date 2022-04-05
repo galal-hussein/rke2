@@ -14,7 +14,7 @@ import (
 	"github.com/rancher/dynamiclistener/cert"
 	"github.com/rancher/dynamiclistener/factory"
 	"github.com/rancher/rke2/pkg/bootstrap"
-	"github.com/rancher/rke2/pkg/daemons/config"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 

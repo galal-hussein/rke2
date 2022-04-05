@@ -19,7 +19,6 @@ import (
 
 	"github.com/rancher/rke2/pkg/auth"
 	"github.com/rancher/rke2/pkg/bootstrap"
-	"github.com/rancher/rke2/pkg/cli/cmds"
 	daemonconfig "github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/daemons/executor"
 	"github.com/rancher/rke2/pkg/images"
@@ -111,6 +110,7 @@ type StaticPodConfig struct {
 	DisableETCD           bool
 	IsServer              bool
 	Authenticator         authenticator.Request
+	EnableSELinux         bool
 }
 
 type CloudProviderConfig struct {
@@ -121,7 +121,7 @@ type CloudProviderConfig struct {
 // Bootstrap prepares the static executor to run components by setting the system default registry
 // and staging the kubelet and containerd binaries.  On servers, it also ensures that manifests are
 // copied in to place and in sync with the system configuration.
-func (s *StaticPodConfig) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, cfg cmds.Agent) error {
+func (s *StaticPodConfig) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node, dataDir string) error {
 	// On servers this is set to an initial value from the CLI when the resolver is created, so that
 	// static pod manifests can be created before the agent bootstrap is complete. The agent itself
 	// really only needs to know about the runtime and pause images, all of which are configured after the
@@ -138,7 +138,7 @@ func (s *StaticPodConfig) Bootstrap(ctx context.Context, nodeConfig *daemonconfi
 	nodeConfig.AgentConfig.PauseImage = pauseImage.Name()
 
 	// stage bootstrap content from runtime image
-	execPath, err := bootstrap.Stage(s.Resolver, nodeConfig, cfg)
+	execPath, err := bootstrap.Stage(s.Resolver, nodeConfig, dataDir)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (s *StaticPodConfig) Bootstrap(ctx context.Context, nodeConfig *daemonconfi
 		return err
 	}
 	if s.IsServer {
-		return bootstrap.UpdateManifests(s.Resolver, nodeConfig, cfg)
+		return bootstrap.UpdateManifests(s.Resolver, nodeConfig, dataDir)
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ func (s *StaticPodConfig) KubeProxy(ctx context.Context, args []string) error {
 		ExtraEnv:      s.ControlPlaneEnv.KubeProxy,
 		ExtraMounts:   s.ControlPlaneMounts.KubeProxy,
 		Privileged:    true,
-	})
+	}, s.EnableSELinux)
 }
 
 // APIServerHandlers returning the authenticator and request handler for requests to the apiserver endpoint.
@@ -291,7 +291,7 @@ func (s *StaticPodConfig) APIServer(ctx context.Context, etcdReady <-chan struct
 			ExtraEnv:      s.ControlPlaneEnv.KubeAPIServer,
 			ExtraMounts:   s.ControlPlaneMounts.KubeAPIServer,
 			Files:         files,
-		})
+		}, s.EnableSELinux)
 	})
 }
 
@@ -328,7 +328,7 @@ func (s *StaticPodConfig) Scheduler(ctx context.Context, apiReady <-chan struct{
 			ExtraEnv:      s.ControlPlaneEnv.KubeScheduler,
 			ExtraMounts:   s.ControlPlaneMounts.KubeScheduler,
 			Files:         files,
-		})
+		}, s.EnableSELinux)
 	})
 }
 
@@ -399,7 +399,7 @@ func (s *StaticPodConfig) ControllerManager(ctx context.Context, apiReady <-chan
 			ExtraEnv:      s.ControlPlaneEnv.KubeControllerManager,
 			ExtraMounts:   s.ControlPlaneMounts.KubeControllerManager,
 			Files:         files,
-		})
+		}, s.EnableSELinux)
 	})
 }
 
@@ -431,7 +431,7 @@ func (s *StaticPodConfig) CloudControllerManager(ctx context.Context, ccmRBACRea
 			ExtraEnv:      s.ControlPlaneEnv.CloudControllerManager,
 			ExtraMounts:   s.ControlPlaneMounts.CloudControllerManager,
 			Files:         []string{},
-		})
+		}, s.EnableSELinux)
 	})
 }
 
@@ -531,7 +531,7 @@ func (s *StaticPodConfig) ETCD(ctx context.Context, args executor.ETCDConfig, ex
 		}
 	}
 
-	if cmds.AgentConfig.EnableSELinux {
+	if s.EnableSELinux {
 		if spa.SecurityContext == nil {
 			spa.SecurityContext = &v1.PodSecurityContext{}
 		}
@@ -542,7 +542,7 @@ func (s *StaticPodConfig) ETCD(ctx context.Context, args executor.ETCDConfig, ex
 		}
 	}
 
-	return staticpod.Run(s.ManifestsDir, spa)
+	return staticpod.Run(s.ManifestsDir, spa, s.EnableSELinux)
 }
 
 // chownr recursively changes the ownership of the given

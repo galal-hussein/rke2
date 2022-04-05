@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -11,7 +12,6 @@ import (
 	"github.com/rancher/rke2/pkg/log"
 	"github.com/rancher/rke2/pkg/token"
 	"github.com/rancher/rke2/pkg/version"
-	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -70,7 +70,5 @@ func (a *Agent) Agent(ctx *cli.Context) error {
 	a.AgentConfig.Debug = ctx.GlobalBool("debug")
 	a.AgentConfig.DataDir = dataDir
 
-	contextCtx := signals.SetupSignalContext()
-
-	return a.Run(contextCtx)
+	return a.Run(context.Background())
 }

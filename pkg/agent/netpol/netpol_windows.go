@@ -3,7 +3,7 @@ package netpol
 import (
 	"context"
 
-	daemonconfig "github.com/rancher/rke2/pkg/daemons/config"
+	daemonconfig "github.com/rancher/rke2/pkg/config"
 )
 
 func Run(ctx context.Context, nodeConfig *daemonconfig.Node) error {

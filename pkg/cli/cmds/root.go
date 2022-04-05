@@ -12,17 +12,19 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/config"
+	"github.com/rancher/rke2/pkg/configfilearg"
 	"github.com/rancher/rke2/pkg/images"
+	"github.com/rancher/rke2/pkg/log"
 	"github.com/rancher/rke2/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
 var (
-	debug   bool
 	appName = filepath.Base(os.Args[0])
 
-	RootConfig = config.RootConfig{}
+	RootConfig    = config.RootConfig{}
+	DefaultParser = configfilearg.DefaultParser(map[string][]cli.Flag{"server": ServerFlags, "agent": AgentFlags})
 
 	commonFlag = []cli.Flag{
 		&cli.StringFlag{
@@ -338,13 +340,13 @@ func NewApp() *cli.App {
 		cli.BoolFlag{
 			Name:        "debug",
 			Usage:       "Turn on debug logs",
-			Destination: &debug,
+			Destination: &log.LogConfig.Debug,
 			EnvVar:      "RKE2_DEBUG",
 		},
 	}
 
 	app.Before = func(clx *cli.Context) error {
-		if debug {
+		if log.LogConfig.Debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
 		return nil

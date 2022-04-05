@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rancher/rke2/pkg/configfilearg"
 	"github.com/urfave/cli"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 )
@@ -116,6 +117,7 @@ type Agent struct {
 	TokenFile                string
 	Token                    string
 	WithNodeID               bool
+	DefaultParser            *configfilearg.Parser
 }
 
 const (

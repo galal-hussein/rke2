@@ -358,6 +358,8 @@ func ServerRun(clx *cli.Context) error {
 	validateCloudProviderName(ServerRole)
 	validateProfile(clx, ServerRole)
 	validateCNI(clx)
+
+	AgentConfig.DefaultParser = DefaultParser
 	rke2 := rke2.NewRKE2(&RootConfig, &ServerConfig, &AgentConfig, true)
 	return rke2.Server(clx)
 }

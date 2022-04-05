@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/rke2/pkg/configfilearg/defaultparser"
+	"github.com/rancher/rke2/pkg/configfilearg"
 	"github.com/rancher/rke2/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -24,9 +24,9 @@ const (
 	OmittedValue = "********"
 )
 
-func getNodeArgs() (string, error) {
+func getNodeArgs(defaultParser *configfilearg.Parser) (string, error) {
 	nodeArgsList := []string{}
-	for _, arg := range defaultparser.MustParse(os.Args[1:]) {
+	for _, arg := range configfilearg.MustParse(os.Args[1:], defaultParser) {
 		if strings.HasPrefix(arg, "--") && strings.Contains(arg, "=") {
 			parsedArg := strings.SplitN(arg, "=", 2)
 			nodeArgsList = append(nodeArgsList, parsedArg...)
@@ -68,8 +68,8 @@ func getNodeEnv() (string, error) {
 	return string(k3sEnvJSON), nil
 }
 
-func SetNodeConfigAnnotations(node *corev1.Node) (bool, error) {
-	nodeArgs, err := getNodeArgs()
+func SetNodeConfigAnnotations(node *corev1.Node, defaultParser *configfilearg.Parser) (bool, error) {
+	nodeArgs, err := getNodeArgs(defaultParser)
 	if err != nil {
 		return false, err
 	}

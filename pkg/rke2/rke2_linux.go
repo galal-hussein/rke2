@@ -20,6 +20,7 @@ import (
 	"github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/etcd"
 	"github.com/rancher/rke2/pkg/images"
+	"github.com/rancher/rke2/pkg/log"
 	"github.com/rancher/rke2/pkg/podexecutor"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -38,7 +39,7 @@ func (r *RKE2) initExecutor(clx *cli.Context, dataDir string) (*podexecutor.Stat
 		return nil, err
 	}
 
-	if err := defaults.Set(clx, dataDir); err != nil {
+	if err := defaults.Set(clx, r.serverConfig, r.agentConfig, log.LogConfig.Debug); err != nil {
 		return nil, err
 	}
 
@@ -187,6 +188,7 @@ func (r *RKE2) initExecutor(clx *cli.Context, dataDir string) (*podexecutor.Stat
 		ControlPlaneResources: controlPlaneResources,
 		ControlPlaneEnv:       extraEnv,
 		ControlPlaneMounts:    extraMounts,
+		EnableSELinux:         r.agentConfig.EnableSELinux,
 	}, nil
 }
 

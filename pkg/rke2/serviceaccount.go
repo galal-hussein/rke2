@@ -5,8 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rancher/rke2/pkg/cli/cmds"
-
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -63,8 +62,8 @@ func restrictServiceAccount(ctx context.Context, namespace string, cs kubernetes
 }
 
 // restrictServiceAccounts disables automount across the 3 primary namespaces.
-func restrictServiceAccounts(cisMode bool, namespaces []string) cmds.StartupHook {
-	return func(ctx context.Context, wg *sync.WaitGroup, args cmds.StartupHookArgs) error {
+func restrictServiceAccounts(cisMode bool, namespaces []string) config.StartupHook {
+	return func(ctx context.Context, wg *sync.WaitGroup, args config.StartupHookArgs) error {
 		if !cisMode {
 			wg.Done()
 			return nil

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/k3s-io/helm-controller/pkg/helm"
+	"github.com/k3s-io/k3s/pkg/static"
 	"github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/clientaccess"
 	"github.com/rancher/rke2/pkg/config"
@@ -24,7 +25,6 @@ import (
 	"github.com/rancher/rke2/pkg/nodepassword"
 	"github.com/rancher/rke2/pkg/server/apiaddresses"
 	"github.com/rancher/rke2/pkg/server/secretsencrypt"
-	"github.com/rancher/rke2/pkg/static"
 	"github.com/rancher/rke2/pkg/util"
 	"github.com/rancher/rke2/pkg/version"
 	v1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"

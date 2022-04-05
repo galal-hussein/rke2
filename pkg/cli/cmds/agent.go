@@ -198,6 +198,7 @@ func AgentRun(clx *cli.Context) error {
 	if err := windows.StartService(); err != nil {
 		return err
 	}
+	AgentConfig.DefaultParser = DefaultParser
 	rke2 := rke2.NewRKE2(&RootConfig, &ServerConfig, &AgentConfig, false)
 	return rke2.Agent(clx)
 }

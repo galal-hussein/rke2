@@ -92,7 +92,7 @@ type Server struct {
 	ServiceNodePortRange     *utilnet.PortRange
 	ServiceNodePortRangeStr  string
 	Skips                    map[string]bool
-	StartupHooks             []StartupHook
+	StartupHooks             []StartupHook `json:"-"`
 	SupervisorPort           int
 	SystemDefaultRegistry    string
 	TLSCipherSuites          []uint16

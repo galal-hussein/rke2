@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancher/rke2/pkg/agent"
 	containerdk3s "github.com/rancher/rke2/pkg/agent/containerd"
-	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/rancher/rke2/pkg/config"
 	daemonconfig "github.com/rancher/rke2/pkg/config"
 	"github.com/rancher/rke2/pkg/controllers/cisnetworkpolicy"
@@ -68,7 +67,8 @@ func (r *RKE2) Server(clx *cli.Context) error {
 
 	// Disable all disableable k3s packaged components. In addition to manifests,
 	// this also disables several integrated controllers.
-	disableItems := strings.Split(cmds.DisableItems, ",")
+	DisableItems := "coredns, servicelb, traefik, local-storage, metrics-server"
+	disableItems := strings.Split(DisableItems, ",")
 	for _, item := range disableItems {
 		if err := clx.Set("disable", strings.TrimSpace(item)); err != nil {
 			return err

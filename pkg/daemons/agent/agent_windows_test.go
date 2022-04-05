@@ -6,7 +6,7 @@ package agent
 import (
 	"testing"
 
-	"github.com/rancher/rke2/pkg/daemons/config"
+	"github.com/rancher/rke2/pkg/config"
 )
 
 func TestCheckRuntimeEndpoint(t *testing.T) {

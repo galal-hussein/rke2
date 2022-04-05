@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/rancher/rke2/pkg/cli/cmds"
 	"github.com/rancher/wrangler/pkg/yaml"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -47,8 +46,8 @@ type Args struct {
 	Privileged      bool
 }
 
-func Run(dir string, args Args) error {
-	if cmds.AgentConfig.EnableSELinux {
+func Run(dir string, args Args, enableSELinux bool) error {
+	if enableSELinux {
 		if args.SecurityContext == nil {
 			args.SecurityContext = &v1.PodSecurityContext{}
 		}

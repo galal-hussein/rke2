@@ -71,7 +71,7 @@ func (a *Agent) run(ctx context.Context, proxy proxy.Proxy) error {
 		return err
 	}
 
-	if err := executor.Bootstrap(ctx, nodeConfig); err != nil {
+	if err := executor.Bootstrap(ctx, nodeConfig, a.AgentConfig.DataDir); err != nil {
 		return err
 	}
 
@@ -80,6 +80,7 @@ func (a *Agent) run(ctx context.Context, proxy proxy.Proxy) error {
 			return err
 		}
 	}
+	nodeConfig.AgentConfig.DefaultParser = a.AgentConfig.DefaultParser
 
 	// the agent runtime is ready to host workloads when containerd is up and the airgap
 	// images have finished loading, as that portion of startup may block for an arbitrary
@@ -219,6 +220,7 @@ func (a *Agent) createProxyAndValidateToken(ctx context.Context) (proxy.Proxy, e
 }
 
 func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes typedcorev1.NodeInterface) error {
+	logrus.Infof("default parser: %#v", agentConfig.DefaultParser)
 	fieldSelector := fields.Set{metav1.ObjectNameField: agentConfig.NodeName}.String()
 	watch, err := nodes.Watch(ctx, metav1.ListOptions{FieldSelector: fieldSelector})
 	if err != nil {
@@ -250,7 +252,7 @@ func configureNode(ctx context.Context, agentConfig *daemonconfig.Agent, nodes t
 		}
 
 		// inject node config
-		if changed, err := nodeconfig.SetNodeConfigAnnotations(node); err != nil {
+		if changed, err := nodeconfig.SetNodeConfigAnnotations(node, agentConfig.DefaultParser); err != nil {
 			return err
 		} else if changed {
 			updateNode = true

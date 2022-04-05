@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/rancher/rke2/pkg/cli/cmds"
+	"github.com/rancher/rke2/pkg/config"
 	"github.com/sirupsen/logrus"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/tools/clientcmd"
@@ -13,8 +13,8 @@ import (
 
 // setClusterRoles applies common clusterroles and clusterrolebindings that are critical
 // to the function of internal controllers.
-func setClusterRoles() cmds.StartupHook {
-	return func(ctx context.Context, wg *sync.WaitGroup, args cmds.StartupHookArgs) error {
+func setClusterRoles() config.StartupHook {
+	return func(ctx context.Context, wg *sync.WaitGroup, args config.StartupHookArgs) error {
 		go func() {
 			defer wg.Done()
 			<-args.APIServerReady
