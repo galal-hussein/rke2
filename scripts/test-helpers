@@ -298,7 +298,7 @@ test-setup() {
         #TAG=${TAG:-${VERSION_TAG}${SUFFIX}}
         #REPO=${REPO:-rancher}
         #IMAGE_NAME=${IMAGE_NAME:-rke2}
-        export RKE2_IMAGE=${REPO}/${PROG}-test:${DOCKERIZED_VERSION}-${GOARCH}
+        export RKE2_IMAGE=husseingalal/${PROG}-test:${DOCKERIZED_VERSION}-${GOARCH}
         #export RKE2_IMAGE=${REPO}/${IMAGE_NAME}:${TAG}
     fi
 
